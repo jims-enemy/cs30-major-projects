@@ -1,22 +1,49 @@
+class Mino {
+  constructor(row, column, color) {
+    this.row = row;
+    this.column = column;
+    this.color = color;
+  }
+
+  display(x1, y1, x2, y2) {
+    fill(this.color);
+    rect(this.column * (x2 - x1)/columnLines + x1, this.row * (y2 - y1)/rowLines + y1,
+      (x2 - x1)/columnLines, (y2 - y1)/rowLines);
+  }
+}
+
 class TetrisBoard {
-  constructor(x1, y1, x2, y2) {
+  constructor(x1, y1, x2, y2, minos) {
     this.x1 = x1;
     this.y1 = y1;
     this.x2 = x2;
     this.y2 = y2;
+    if (minos) {
+      this.minos = minos;
+    }
+    else {
+      this.minos = [];
+    }
   }
   
-  drawGrid() {
+  display() {
     stroke("white");
 
     // Draws the columns.
     for(let currentColumn = 0; currentColumn < columnLines + 1; currentColumn++) {
-      line((this.x2 - this.x1)/columnLines * currentColumn + this.x1, this.y1, (this.x2 - this.x1)/columnLines * currentColumn + this.x1, this.y2);
+      let xValue = (this.x2 - this.x1)/columnLines * currentColumn + this.x1;
+      line(xValue, this.y1, xValue, this.y2);
     }
 
     // Draws the rows.
     for(let currentRow = 0; currentRow < rowLines + 1; currentRow++) {
-      line(this.x1,(this.y2 - this.y1)/rowLines * currentRow + this.y1, this.x2, (this.y2 - this.y1)/rowLines * currentRow + this.y1);
+      let yValue =  (this.y2 - this.y1)/rowLines * currentRow + this.y1;
+      line(this.x1, yValue, this.x2, yValue);
+    }
+
+    // Draws the minos.
+    for(let currentMino of this.minos) {
+      currentMino.display(this.x1, this.y1, this.x2, this.y2);
     }
   }
 }
@@ -47,13 +74,6 @@ let rotatedLeft = false;
 let invalidRotation = false;
 let activeTetrominoOld;
 
-// Sets up each game.
-for (let board = 0; board < games; board++) {
-  let boardMap = new Map();
-  boardMap.set("minos", []);
-  tetrisBoards.set(`tetrisGame${board}`, boardMap);
-}
-
 const SWAP = 1;
 const I = 2;
 const J = 3;
@@ -74,23 +94,24 @@ function setup() {
   createCanvas(windowWidth, windowHeight);
 
   // Sets the first board's coordinates.
-  for(let coordinatePair of [["x1", width/3], ["y1", 0], ["x2", width/3 * 2], ["y2", height]]) {
-    tetrisBoards.get("tetrisGame0").set(coordinatePair[0], coordinatePair[1]);
-  }
+  tetrisBoards.set("tetrisGame0", new TetrisBoard(width/3, 0, width/3 * 2, height));
 
-  // Sets all the other games' coordinates.
+  // Sets up every other game's coordinates.
   let currentGame = 1;
-  for(let currentGameRow = 0; currentGameRow < Math.ceil(Math.sqrt(games - 1)) && currentGame !== games; currentGameRow++) {
-    for(let currentGameColumn = 0; currentGameColumn < Math.ceil(Math.sqrt(games - 1)) && currentGame !== games; currentGameColumn++) {
-      for(let keyValuePair of [["x1", currentGameColumn * width/(3 * Math.ceil(Math.sqrt(games - 1)))],
-        ["y1", currentGameRow * height/Math.ceil(Math.sqrt(games - 1))],
-        ["x2", currentGameColumn * width/(3 * Math.ceil(Math.sqrt(games - 1))) + width/(3 * Math.ceil(Math.sqrt(games - 1)))],
-        ["y2", currentGameRow * height/Math.ceil(Math.sqrt(games - 1)) + height/Math.ceil(Math.sqrt(games - 1))]]) {
-        tetrisBoards.get(`tetrisGame${currentGame}`).set(keyValuePair[0], keyValuePair[1]);
-      }
+  for(let currentGameRow = 0; currentGameRow < Math.ceil(Math.sqrt(games - 1)) && currentGame !== games;
+    currentGameRow++) {
+    for(let currentGameColumn = 0; currentGameColumn < Math.ceil(Math.sqrt(games - 1)) && currentGame !== games;
+      currentGameColumn++) {
+      tetrisBoards.set(`tetrisGame${currentGame}`, new TetrisBoard(
+        currentGameColumn * width/(3 * Math.ceil(Math.sqrt(games - 1))),
+        currentGameRow * height/Math.ceil(Math.sqrt(games - 1)),
+        currentGameColumn * width/(3 * Math.ceil(Math.sqrt(games - 1))) +
+        width/(3 * Math.ceil(Math.sqrt(games - 1))),
+        currentGameRow * height/Math.ceil(Math.sqrt(games - 1)) + height/Math.ceil(Math.sqrt(games - 1))));
       currentGame++;
     }
   }
+
   fillBag();
 }
 
@@ -100,10 +121,8 @@ function draw() {
 
   // Draws each game.
   for(let gameNumber = 0; gameNumber < games; gameNumber++) {
-    drawGrid(tetrisBoards.get(`tetrisGame${gameNumber}`));
+    tetrisBoards.get(`tetrisGame${gameNumber}`).display();
   }
-
-  drawMinos();
   controlTetris();
   moveActiveTetromino();
 }
@@ -111,49 +130,25 @@ function draw() {
 function windowResized() {
   resizeCanvas(windowWidth, windowHeight);
 
-  // Sets the first board's new coordinates.
-  for(let coordinatePair of [["x1", width/3], ["y1", 0], ["x2", width/3 * 2], ["y2", height]]) {
-    tetrisBoards.get("tetrisGame0").set(coordinatePair[0], coordinatePair[1]);
-  }
+  // Resets the first board's coordinates.
+  tetrisBoards.set("tetrisGame0", new TetrisBoard(width/3, 0, width/3 * 2, height,
+    tetrisBoards.get("tetrisGame0").minos));
+
+  // Sets up every other game's coordinates.
   let currentGame = 1;
+  for(let currentGameRow = 0; currentGameRow < Math.ceil(Math.sqrt(games - 1)) && currentGame !== games;
+    currentGameRow++) {
+    for(let currentGameColumn = 0; currentGameColumn < Math.ceil(Math.sqrt(games - 1)) && currentGame !== games;
+      currentGameColumn++) {
+      tetrisBoards.set(`tetrisGame${currentGame}`, new TetrisBoard(
+        currentGameColumn * width/(3 * Math.ceil(Math.sqrt(games - 1))),
+        currentGameRow * height/Math.ceil(Math.sqrt(games - 1)),
+        currentGameColumn * width/(3 * Math.ceil(Math.sqrt(games - 1))) +
+        width/(3 * Math.ceil(Math.sqrt(games - 1))),
+        currentGameRow * height/Math.ceil(Math.sqrt(games - 1)) + height/Math.ceil(Math.sqrt(games - 1)),
+        tetrisBoards.get(`tetrisGame${currentGame}`).minos));
 
-  // Sets all the other games' new coordinates.
-  for(let currentGameRow = 0; currentGameRow < Math.ceil(Math.sqrt(games - 1)) && currentGame !== games; currentGameRow++) {
-    for(let currentGameColumn = 0; currentGameColumn < Math.ceil(Math.sqrt(games - 1)) && currentGame !== games; currentGameColumn++) {
-      for(let coordinatePair of [["x1", currentGameColumn * width/(3 * Math.ceil(Math.sqrt(games - 1)))], ["y1", currentGameRow * height/Math.ceil(Math.sqrt(games - 1))], ["x2", currentGameColumn * width/(3 * Math.ceil(Math.sqrt(games - 1))) + width/(3 * Math.ceil(Math.sqrt(games - 1)))], ["y2", currentGameRow * height/Math.ceil(Math.sqrt(games - 1)) + height/Math.ceil(Math.sqrt(games - 1))]]) {
-        tetrisBoards.get(`tetrisGame${currentGame}`).set(coordinatePair[0], coordinatePair[1]);
-      }
       currentGame++;
-    }
-  }
-}
-
-function drawGrid(currentTetrisGame) {
-  /**Draws the grid for currentTetrisGame.*/
-
-  stroke("white");
-
-  // Draws the columns.
-  for(let currentColumn = 0; currentColumn < columnLines + 1; currentColumn++) {
-    line((currentTetrisGame.get("x2") - currentTetrisGame.get("x1"))/columnLines * currentColumn + currentTetrisGame.get("x1"), currentTetrisGame.get("y1"), (currentTetrisGame.get("x2") - currentTetrisGame.get("x1"))/columnLines * currentColumn + currentTetrisGame.get("x1"), currentTetrisGame.get("y2"));
-  }
-
-  // Draws the rows.
-  for(let currentRow = 0; currentRow < rowLines + 1; currentRow++) {
-    line(currentTetrisGame.get("x1"),(currentTetrisGame.get("y2") - currentTetrisGame.get("y1"))/rowLines * currentRow + currentTetrisGame.get("y1"), currentTetrisGame.get("x2"), (currentTetrisGame.get("y2") - currentTetrisGame.get("y1"))/rowLines * currentRow + currentTetrisGame.get("y1"));
-  }
-}
-
-function drawMinos() {
-  /**Draws each tetris games' individual minos.*/
-  
-  for (let [gameName, gameOfTetris] of tetrisBoards) {
-    for(let currentMino of gameOfTetris.get("minos")) {
-      fill(currentMino.color);
-      rect(currentMino.column * (gameOfTetris.get("x2") - gameOfTetris.get("x1"))/columnLines + gameOfTetris.get("x1"),
-        currentMino.row * (gameOfTetris.get("y2") - gameOfTetris.get("y1"))/rowLines + gameOfTetris.get("y1"), 
-        (gameOfTetris.get("x2") - gameOfTetris.get("x1"))/columnLines,
-        (gameOfTetris.get("y2") - gameOfTetris.get("y1"))/rowLines);
     }
   }
 }
@@ -208,14 +203,14 @@ function moveActiveTetromino() {
       activeTetromino.row4 >= 0) {
       fill(activeTetromino.color);
       for (let columnRow of [[activeTetromino.column1, activeTetromino.row1], [activeTetromino.column2, activeTetromino.row2], [activeTetromino.column3, activeTetromino.row3], [activeTetromino.column4, activeTetromino.row4]]) {
-        rect(columnRow[0] * (tetrisBoards.get("tetrisGame0").get("x2") - tetrisBoards.get("tetrisGame0").get("x1"))/columnLines + tetrisBoards.get("tetrisGame0").get("x1"),
-          columnRow[1] * (tetrisBoards.get("tetrisGame0").get("y2") - tetrisBoards.get("tetrisGame0").get("y1"))/rowLines + tetrisBoards.get("tetrisGame0").get("y1"), 
-          (tetrisBoards.get("tetrisGame0").get("x2") - tetrisBoards.get("tetrisGame0").get("x1"))/columnLines,
-          (tetrisBoards.get("tetrisGame0").get("y2") - tetrisBoards.get("tetrisGame0").get("y1"))/rowLines);
+        rect(columnRow[0] * (tetrisBoards.get("tetrisGame0").x2 - tetrisBoards.get("tetrisGame0").x1)/columnLines + tetrisBoards.get("tetrisGame0").x1,
+          columnRow[1] * (tetrisBoards.get("tetrisGame0").y2 - tetrisBoards.get("tetrisGame0").y1)/rowLines + tetrisBoards.get("tetrisGame0").y1, 
+          (tetrisBoards.get("tetrisGame0").x2 - tetrisBoards.get("tetrisGame0").x1)/columnLines,
+          (tetrisBoards.get("tetrisGame0").y2 - tetrisBoards.get("tetrisGame0").y1)/rowLines);
       }
     }
     if ((timer - lastUpdate >= (0.8 - (level - 1) * 0.007)**(level - 1) * 1000 || softDrop && timer - lastUpdate >= softDropSpeed) && hardDrop !== "movePiece") {
-      for (let minoToCheck of tetrisBoards.get("tetrisGame0").get("minos")) {
+      for (let minoToCheck of tetrisBoards.get("tetrisGame0").minos) {
         if (minoToCheck.row === activeTetromino.row1 + 1 && minoToCheck.column === activeTetromino.column1 || 
           minoToCheck.row === activeTetromino.row2 + 1 && minoToCheck.column === activeTetromino.column2 ||
           minoToCheck.row === activeTetromino.row3 + 1 && minoToCheck.column === activeTetromino.column3 || 
@@ -239,9 +234,7 @@ function moveActiveTetromino() {
           [activeTetromino.row2, activeTetromino.column2],
           [activeTetromino.row3, activeTetromino.column3],
           [activeTetromino.row4, activeTetromino.column4]]) {
-          tetrisBoards.get("tetrisGame0").get("minos").push({color: activeTetromino.color,
-            row: currentBlock[0],
-            column: currentBlock[1]});
+          tetrisBoards.get("tetrisGame0").minos.push(new Mino(currentBlock[0], currentBlock[1], activeTetromino.color));
         }
         activeTetromino.isActive = false;
         hardDrop = false;
@@ -256,7 +249,7 @@ function moveActiveTetromino() {
         activeTetromino.row4 + spacesToDrop < rowLines &&
         safeToDrop) {
         spacesToDrop++;
-        for (let minoToCheck of tetrisBoards.get("tetrisGame0").get("minos")) {
+        for (let minoToCheck of tetrisBoards.get("tetrisGame0").minos) {
           if (minoToCheck.row === activeTetromino.row1 + spacesToDrop && minoToCheck.column === activeTetromino.column1 || 
             minoToCheck.row === activeTetromino.row2 + spacesToDrop && minoToCheck.column === activeTetromino.column2 ||
             minoToCheck.row === activeTetromino.row3 + spacesToDrop && minoToCheck.column === activeTetromino.column3 || 
@@ -423,7 +416,7 @@ function controlTetris() {
   hardDrop === false) {
 
     // Checks if the player is trying to move the tetromino inside another tetromino.
-    for (let minoToCheck of tetrisBoards.get("tetrisGame0").get("minos")) {
+    for (let minoToCheck of tetrisBoards.get("tetrisGame0").minos) {
       if (minoToCheck.column === activeTetromino.column1 - 1 && minoToCheck.row === activeTetromino.row1 || 
         minoToCheck.column === activeTetromino.column2 - 1 && minoToCheck.row === activeTetromino.row2 ||
         minoToCheck.column === activeTetromino.column3 - 1 && minoToCheck.row === activeTetromino.row3 || 
@@ -455,7 +448,7 @@ function controlTetris() {
   hardDrop === false) {
 
     // Checks if the player is trying to move the tetromino inside another tetromino.
-    for (let minoToCheck of tetrisBoards.get("tetrisGame0").get("minos")) {
+    for (let minoToCheck of tetrisBoards.get("tetrisGame0").minos) {
       if (minoToCheck.column === activeTetromino.column1 + 1 && minoToCheck.row === activeTetromino.row1 || 
         minoToCheck.column === activeTetromino.column2 + 1 && minoToCheck.row === activeTetromino.row2 ||
         minoToCheck.column === activeTetromino.column3 + 1 && minoToCheck.row === activeTetromino.row3 || 
@@ -571,7 +564,7 @@ function rotateTetromino(clockwise) {
   }
   for (let kickTests = 0; invalidRotation === true && kickTests < 5; kickTests++) {
     invalidRotation = false;
-    for (let checkMino of tetrisBoards.get("tetrisGame0").get("minos")) {
+    for (let checkMino of tetrisBoards.get("tetrisGame0").minos) {
       for (let tetrominoMino of [[activeTetromino.column1, activeTetromino.row1],
         [activeTetromino.column2, activeTetromino.row2],
         [activeTetromino.column3, activeTetromino.row3],
