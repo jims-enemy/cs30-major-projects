@@ -83,6 +83,8 @@ let rotatedRight = false;
 let rotatedLeft = false;
 let invalidRotation = false;
 let activeTetrominoOld;
+let canHold = true;
+let heldPiece;
 
 const SWAP = 1;
 const I = 2;
@@ -99,6 +101,7 @@ const SPACE = 32;
 const KEY_X = 88;
 const KEY_W = 87;
 const KEY_Z = 90;
+const KEY_C = 67;
 
 function setup() {
   createCanvas(windowWidth, windowHeight);
@@ -246,6 +249,7 @@ function moveActiveTetromino() {
           [activeTetromino.row3, activeTetromino.column3],
           [activeTetromino.row4, activeTetromino.column4]]) {
           tetrisBoards.get("tetrisGame0").minos.push(new Mino(currentBlock[0], currentBlock[1], activeTetromino.color));
+          canHold = true;
         }
         activeTetromino.isActive = false;
         hardDrop = false;
@@ -416,112 +420,11 @@ function moveActiveTetromino() {
 }
 
 function controlTetris() {
-  /**Handles the controls for tetris, checking if any relevant keys are pressed and calling the relevant functions.*/
-
-  // Checks if the player is trying to move left, if they aren't at the edge, and the player hasn't just hard-dropped.
-  if ((keyIsDown(LEFT_ARROW) || keyIsDown(KEY_A)) && 
-  activeTetromino.column1 - 1 >= 0 &&
-  activeTetromino.column2 - 1 >= 0 &&
-  activeTetromino.column3 - 1 >= 0 &&
-  activeTetromino.column4 - 1 >= 0 &&
-  hardDrop === false) {
-
-    // Checks if the player is trying to move the tetromino inside another tetromino.
-    for (let minoToCheck of tetrisBoards.get("tetrisGame0").minos) {
-      if (minoToCheck.column === activeTetromino.column1 - 1 && minoToCheck.row === activeTetromino.row1 || 
-        minoToCheck.column === activeTetromino.column2 - 1 && minoToCheck.row === activeTetromino.row2 ||
-        minoToCheck.column === activeTetromino.column3 - 1 && minoToCheck.row === activeTetromino.row3 || 
-        minoToCheck.column === activeTetromino.column4 - 1 && minoToCheck.row === activeTetromino.row4) {
-        obstructionOnLeftSide = true;
-      }
-    }
-
-    // Shifts the tetromino left if it is possible. Also, includes a delay for precision.
-    if(!obstructionOnLeftSide && (leftTimeHeld === 0 || leftTimeHeld >= holdDelay)) {
-      activeTetromino.column1--;
-      activeTetromino.column2--;
-      activeTetromino.column3--;
-      activeTetromino.column4--;
-    }
-    obstructionOnLeftSide = false;
-    leftTimeHeld++;
-  }
-  else {
-    leftTimeHeld = 0;
-  }
-
-  // Checks if the player is trying to move right, if they aren't at the edge, and the player hasn't just hard-dropped.
-  if ((keyIsDown(RIGHT_ARROW) || keyIsDown(KEY_D)) &&
-  activeTetromino.column4 + 1 < columnLines && 
-  activeTetromino.column3 + 1 < columnLines && 
-  activeTetromino.column2 + 1 < columnLines && 
-  activeTetromino.column1 + 1 < columnLines &&
-  hardDrop === false) {
-
-    // Checks if the player is trying to move the tetromino inside another tetromino.
-    for (let minoToCheck of tetrisBoards.get("tetrisGame0").minos) {
-      if (minoToCheck.column === activeTetromino.column1 + 1 && minoToCheck.row === activeTetromino.row1 || 
-        minoToCheck.column === activeTetromino.column2 + 1 && minoToCheck.row === activeTetromino.row2 ||
-        minoToCheck.column === activeTetromino.column3 + 1 && minoToCheck.row === activeTetromino.row3 || 
-        minoToCheck.column === activeTetromino.column4 + 1 && minoToCheck.row === activeTetromino.row4) {
-        obstructionOnRightSide = true;
-      }
-    }
-
-    // Shifts the tetromino right if it is possible. Also, includes a delay for precision.
-    if(!obstructionOnRightSide && (rightTimeHeld === 0 || rightTimeHeld >= holdDelay)) {
-      activeTetromino.column1++;
-      activeTetromino.column2++;
-      activeTetromino.column3++;
-      activeTetromino.column4++;
-    }
-    obstructionOnRightSide = false;
-    rightTimeHeld++;
-  }
-  else {
-    rightTimeHeld = 0;
-  }
-
-  // Checks if the player is trying to soft-drop, speeding up the tetromino's drop speed.
-  if (keyIsDown(DOWN_ARROW) || keyIsDown(KEY_S)) {
-    softDrop = true;
-  }
-  else {
-    softDrop = false;
-  }
-
-  // Checks if the player is trying to hard-drop, allowing it if they tapped rather than held the space bar.
-  if (keyIsDown(SPACE)) {
-    if (!hardDropped) {
-      hardDropped = true;
-      hardDrop = "movePiece";
-    }
-  }
-  else {
-    hardDropped = false;
-  }
-
-  // Checks if the player is trying to rotate the tetromino clockwise and that they pressed the key rather than held.
-  if (keyIsDown(UP_ARROW) || keyIsDown(KEY_X) || keyIsDown(KEY_W)){
-    if (!rotatedRight && !rotatedLeft) {
-      rotateTetromino(true);
-      rotatedRight = true;
-    }
-  }
-  else {
-    rotatedRight = false;
-  }
-
-  // Checks if the player is trying to rotate the tetromino counter-clockwise and that they pressed the key rather than held.
-  if (keyIsDown(CONTROL) || keyIsDown(KEY_Z)){
-    if (!rotatedLeft && !rotatedRight) {
-      rotateTetromino(false);
-      rotatedLeft = true;
-    }
-  }
-  else {
-    rotatedLeft = false;
-  }
+  moveLeft();
+  moveRight();
+  drop();
+  rotateIt();
+  hold();
 }
 
 function rotateTetromino(clockwise) {
@@ -790,11 +693,140 @@ function clearLines() {
 
   for (let [rowToCheck, amountInRow] of minosInRow) {
     if (amountInRow >= columnLines) {
-      console.log("a");
-
       for (let currentMino = tetrisBoards.get("tetrisGame0").minos.length - 1; currentMino >= 0; currentMino--) {
         tetrisBoards.get("tetrisGame0").minos[currentMino].lineCleared(rowToCheck, currentMino);
       }
+      return;
     }
+  }
+}
+
+function moveLeft() {
+  // Checks if the player is trying to move left, if they aren't at the edge, and the player hasn't just hard-dropped.
+  if ((keyIsDown(LEFT_ARROW) || keyIsDown(KEY_A)) && 
+  activeTetromino.column1 - 1 >= 0 &&
+  activeTetromino.column2 - 1 >= 0 &&
+  activeTetromino.column3 - 1 >= 0 &&
+  activeTetromino.column4 - 1 >= 0 &&
+  hardDrop === false) {
+
+    // Checks if the player is trying to move the tetromino inside another tetromino.
+    for (let minoToCheck of tetrisBoards.get("tetrisGame0").minos) {
+      if (minoToCheck.column === activeTetromino.column1 - 1 && minoToCheck.row === activeTetromino.row1 || 
+        minoToCheck.column === activeTetromino.column2 - 1 && minoToCheck.row === activeTetromino.row2 ||
+        minoToCheck.column === activeTetromino.column3 - 1 && minoToCheck.row === activeTetromino.row3 || 
+        minoToCheck.column === activeTetromino.column4 - 1 && minoToCheck.row === activeTetromino.row4) {
+        obstructionOnLeftSide = true;
+      }
+    }
+
+    // Shifts the tetromino left if it is possible. Also, includes a delay for precision.
+    if(!obstructionOnLeftSide && (leftTimeHeld === 0 || leftTimeHeld >= holdDelay)) {
+      activeTetromino.column1--;
+      activeTetromino.column2--;
+      activeTetromino.column3--;
+      activeTetromino.column4--;
+    }
+    obstructionOnLeftSide = false;
+    leftTimeHeld++;
+  }
+  else {
+    leftTimeHeld = 0;
+  }
+}
+
+function moveRight() {
+  // Checks if the player is trying to move right, if they aren't at the edge, and the player hasn't just hard-dropped.
+  if ((keyIsDown(RIGHT_ARROW) || keyIsDown(KEY_D)) &&
+  activeTetromino.column4 + 1 < columnLines && 
+  activeTetromino.column3 + 1 < columnLines && 
+  activeTetromino.column2 + 1 < columnLines && 
+  activeTetromino.column1 + 1 < columnLines &&
+  hardDrop === false) {
+
+    // Checks if the player is trying to move the tetromino inside another tetromino.
+    for (let minoToCheck of tetrisBoards.get("tetrisGame0").minos) {
+      if (minoToCheck.column === activeTetromino.column1 + 1 && minoToCheck.row === activeTetromino.row1 || 
+        minoToCheck.column === activeTetromino.column2 + 1 && minoToCheck.row === activeTetromino.row2 ||
+        minoToCheck.column === activeTetromino.column3 + 1 && minoToCheck.row === activeTetromino.row3 || 
+        minoToCheck.column === activeTetromino.column4 + 1 && minoToCheck.row === activeTetromino.row4) {
+        obstructionOnRightSide = true;
+      }
+    }
+
+    // Shifts the tetromino right if it is possible. Also, includes a delay for precision.
+    if(!obstructionOnRightSide && (rightTimeHeld === 0 || rightTimeHeld >= holdDelay)) {
+      activeTetromino.column1++;
+      activeTetromino.column2++;
+      activeTetromino.column3++;
+      activeTetromino.column4++;
+    }
+    obstructionOnRightSide = false;
+    rightTimeHeld++;
+  }
+  else {
+    rightTimeHeld = 0;
+  }
+}
+
+function drop() {
+// Checks if the player is trying to soft-drop, speeding up the tetromino's drop speed.
+  if (keyIsDown(DOWN_ARROW) || keyIsDown(KEY_S)) {
+    softDrop = true;
+  }
+  else {
+    softDrop = false;
+  }
+
+  // Checks if the player is trying to hard-drop, allowing it if they tapped rather than held the space bar.
+  if (keyIsDown(SPACE)) {
+    if (!hardDropped) {
+      hardDropped = true;
+      hardDrop = "movePiece";
+    }
+  }
+  else {
+    hardDropped = false;
+  }
+}
+
+function rotateIt () {
+  // Checks if the player is trying to rotate the tetromino clockwise and that they pressed the key rather than held.
+  if (keyIsDown(UP_ARROW) || keyIsDown(KEY_X) || keyIsDown(KEY_W)){
+    if (!rotatedRight && !rotatedLeft) {
+      rotateTetromino(true);
+      rotatedRight = true;
+    }
+  }
+  else {
+    rotatedRight = false;
+  }
+
+  // Checks if the player is trying to rotate the tetromino counter-clockwise and that they pressed the key rather than held.
+  if (keyIsDown(CONTROL) || keyIsDown(KEY_Z)){
+    if (!rotatedLeft && !rotatedRight) {
+      rotateTetromino(false);
+      rotatedLeft = true;
+    }
+  }
+  else {
+    rotatedLeft = false;
+  }
+}
+
+function hold() {
+  if ((keyIsDown(SHIFT) || keyIsDown(KEY_C)) && canHold) {
+    if (heldPiece) {
+      bag.unshift(heldPiece);
+    }
+    
+    for(let [color, pieceName] of [["cyan", 2], ["blue", 3], ["orange", 4], ["yellow", 5], ["green", 6], ["red", 7], ["purple", 8]]) {
+      if (activeTetromino.color === color) {
+        heldPiece = pieceName;
+      }
+    }
+
+    activeTetromino.isActive = false;
+    canHold = false;
   }
 }
