@@ -51,7 +51,7 @@ class TetrisBoard {
 let columnLines = 10;
 let rowLines = 20;
 let tetrisBoards = new Map();
-let games = 9; // Does NOT work with 2 or less.
+let games = 1;
 let bag = [];
 let level = 1;
 let timer;
@@ -235,6 +235,7 @@ function moveActiveTetromino() {
           [activeTetromino.row3, activeTetromino.column3],
           [activeTetromino.row4, activeTetromino.column4]]) {
           tetrisBoards.get("tetrisGame0").minos.push(new Mino(currentBlock[0], currentBlock[1], activeTetromino.color));
+          clearLines();
         }
         activeTetromino.isActive = false;
         hardDrop = false;
@@ -763,5 +764,23 @@ function rotateTetromino(clockwise) {
 
   if (invalidRotation) {
     activeTetromino = activeTetrominoOld;
+  }
+}
+
+function clearLines() {
+  let minosInColumn = new Map();
+  for (let currentMino of tetrisBoards.get("tetrisGame0").minos) {
+    if (minosInColumn.has(currentMino.row)) {
+      minosInColumn.set(currentMino.row, minosInColumn.get(currentMino.row) + 1);
+    }
+    else {
+      minosInColumn.set(currentMino.row, 1);
+    }
+  }
+
+  for (let [columnToCheck, amountInColumn] of minosInColumn) {
+    if (amountInColumn >= columnLines) {
+
+    }
   }
 }
