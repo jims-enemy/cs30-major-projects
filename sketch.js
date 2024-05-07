@@ -10,6 +10,16 @@ class Mino {
     rect(this.column * (x2 - x1)/columnLines + x1, this.row * (y2 - y1)/rowLines + y1,
       (x2 - x1)/columnLines, (y2 - y1)/rowLines);
   }
+
+  lineCleared(rowCleared, thisIndex) {
+    if (this.row === rowCleared) {
+      tetrisBoards.get("tetrisGame0").minos.splice(thisIndex, 1);
+    }
+
+    else if (this.row < rowCleared) {
+      this.row++;
+    }
+  }
 }
 
 class TetrisBoard {
@@ -125,6 +135,7 @@ function draw() {
   }
   controlTetris();
   moveActiveTetromino();
+  clearLines();
 }
 
 function windowResized() {
@@ -235,7 +246,6 @@ function moveActiveTetromino() {
           [activeTetromino.row3, activeTetromino.column3],
           [activeTetromino.row4, activeTetromino.column4]]) {
           tetrisBoards.get("tetrisGame0").minos.push(new Mino(currentBlock[0], currentBlock[1], activeTetromino.color));
-          clearLines();
         }
         activeTetromino.isActive = false;
         hardDrop = false;
@@ -768,19 +778,23 @@ function rotateTetromino(clockwise) {
 }
 
 function clearLines() {
-  let minosInColumn = new Map();
+  let minosInRow = new Map();
   for (let currentMino of tetrisBoards.get("tetrisGame0").minos) {
-    if (minosInColumn.has(currentMino.row)) {
-      minosInColumn.set(currentMino.row, minosInColumn.get(currentMino.row) + 1);
+    if (minosInRow.has(currentMino.row)) {
+      minosInRow.set(currentMino.row, minosInRow.get(currentMino.row) + 1);
     }
     else {
-      minosInColumn.set(currentMino.row, 1);
+      minosInRow.set(currentMino.row, 1);
     }
   }
 
-  for (let [columnToCheck, amountInColumn] of minosInColumn) {
-    if (amountInColumn >= columnLines) {
+  for (let [rowToCheck, amountInRow] of minosInRow) {
+    if (amountInRow >= columnLines) {
+      console.log("a");
 
+      for (let currentMino = tetrisBoards.get("tetrisGame0").minos.length - 1; currentMino >= 0; currentMino--) {
+        tetrisBoards.get("tetrisGame0").minos[currentMino].lineCleared(rowToCheck, currentMino);
+      }
     }
   }
 }
