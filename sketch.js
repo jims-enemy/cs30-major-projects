@@ -85,6 +85,7 @@ let invalidRotation = false;
 let activeTetrominoOld;
 let canHold = true;
 let heldPiece;
+let score = 0;
 
 const SWAP = 1;
 const I = 2;
@@ -138,7 +139,6 @@ function draw() {
   }
   controlTetris();
   moveActiveTetromino();
-  clearLines();
 }
 
 function windowResized() {
@@ -249,10 +249,11 @@ function moveActiveTetromino() {
           [activeTetromino.row3, activeTetromino.column3],
           [activeTetromino.row4, activeTetromino.column4]]) {
           tetrisBoards.get("tetrisGame0").minos.push(new Mino(currentBlock[0], currentBlock[1], activeTetromino.color));
-          canHold = true;
         }
         activeTetromino.isActive = false;
         hardDrop = false;
+        canHold = true;
+        clearLines();
       }
       blockUnder = false;
     }
@@ -681,24 +682,34 @@ function rotateTetromino(clockwise) {
 }
 
 function clearLines() {
-  let minosInRow = new Map();
-  for (let currentMino of tetrisBoards.get("tetrisGame0").minos) {
-    if (minosInRow.has(currentMino.row)) {
-      minosInRow.set(currentMino.row, minosInRow.get(currentMino.row) + 1);
-    }
-    else {
-      minosInRow.set(currentMino.row, 1);
-    }
-  }
+  let minosInRow = countMinosInRow();
+  let linesCleared = 0;
 
   for (let [rowToCheck, amountInRow] of minosInRow) {
     if (amountInRow >= columnLines) {
       for (let currentMino = tetrisBoards.get("tetrisGame0").minos.length - 1; currentMino >= 0; currentMino--) {
         tetrisBoards.get("tetrisGame0").minos[currentMino].lineCleared(rowToCheck, currentMino);
       }
-      return;
+      linesCleared++;
+      minosInRow = countMinosInRow();
     }
   }
+
+  if (linesCleared === 1) {
+    score += 100 * level;
+  }
+  
+  else if (linesCleared === 2) {
+    score += 300 * level;
+  }
+
+  else if (linesCleared === 3) {
+    score += 500 * level;
+  }
+
+  else if (linesCleared === 4) {
+    score += 800 * level;
+  }  
 }
 
 function moveLeft() {
@@ -829,4 +840,17 @@ function hold() {
     activeTetromino.isActive = false;
     canHold = false;
   }
+}
+
+function countMinosInRow() {
+  let minosInRow = new Map();
+  for (let currentMino of tetrisBoards.get("tetrisGame0").minos) {
+    if (minosInRow.has(currentMino.row)) {
+      minosInRow.set(currentMino.row, minosInRow.get(currentMino.row) + 1);
+    }
+    else {
+      minosInRow.set(currentMino.row, 1);
+    }
+  }
+  return minosInRow;
 }
