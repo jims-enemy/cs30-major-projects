@@ -86,6 +86,7 @@ let activeTetrominoOld;
 let canHold = true;
 let heldPiece;
 let score = 0;
+let comboCounter = -1;
 
 const SWAP = 1;
 const I = 2;
@@ -358,54 +359,12 @@ function controlTetris() {
 }
 
 function rotateTetromino(clockwise) {
-/**Rotates the active tetromino according to official guideline tetris SRS. Also, handles wall-kicks, if they are possible. */
-
+  activeTetromino.rotatedLast = true;
   invalidRotation = true;
   activeTetrominoOld = {...activeTetromino};
 
-  if (activeTetromino.rotation === 0 && clockwise || activeTetromino.rotation === 3 && !clockwise) {
-    activeTetromino.column1 += activeTetromino.blockChange1[0];
-    activeTetromino.row1 += activeTetromino.blockChange1[1];
-    activeTetromino.column2 += activeTetromino.blockChange2[0];
-    activeTetromino.row2 += activeTetromino.blockChange2[1];
-    activeTetromino.column3 += activeTetromino.blockChange3[0];
-    activeTetromino.row3 += activeTetromino.blockChange3[1];
-    activeTetromino.column4 += activeTetromino.blockChange4[0];
-    activeTetromino.row4 += activeTetromino.blockChange4[1];
-  }
+  initialRotation(clockwise);
 
-  else if (activeTetromino.rotation === 1 && clockwise || activeTetromino.rotation === 0 && !clockwise) {
-    activeTetromino.column1 -= activeTetromino.blockChange1[1];
-    activeTetromino.row1 += activeTetromino.blockChange1[0];
-    activeTetromino.column2 -= activeTetromino.blockChange2[1];
-    activeTetromino.row2 += activeTetromino.blockChange2[0];
-    activeTetromino.column3 -= activeTetromino.blockChange3[1];
-    activeTetromino.row3 += activeTetromino.blockChange3[0];
-    activeTetromino.column4 -= activeTetromino.blockChange4[1];
-    activeTetromino.row4 += activeTetromino.blockChange4[0];
-  }
-
-  else if (activeTetromino.rotation === 2 && clockwise || activeTetromino.rotation === 1 && !clockwise) {
-    activeTetromino.column1 -= activeTetromino.blockChange1[0];
-    activeTetromino.row1 -= activeTetromino.blockChange1[1];
-    activeTetromino.column2 -= activeTetromino.blockChange2[0];
-    activeTetromino.row2 -= activeTetromino.blockChange2[1];
-    activeTetromino.column3 -= activeTetromino.blockChange3[0];
-    activeTetromino.row3 -= activeTetromino.blockChange3[1];
-    activeTetromino.column4 -= activeTetromino.blockChange4[0];
-    activeTetromino.row4 -= activeTetromino.blockChange4[1];
-  }
-
-  else {
-    activeTetromino.column1 += activeTetromino.blockChange1[1];
-    activeTetromino.row1 -= activeTetromino.blockChange1[0];
-    activeTetromino.column2 += activeTetromino.blockChange2[1];
-    activeTetromino.row2 -= activeTetromino.blockChange2[0];
-    activeTetromino.column3 += activeTetromino.blockChange3[1];
-    activeTetromino.row3 -= activeTetromino.blockChange3[0];
-    activeTetromino.column4 += activeTetromino.blockChange4[1];
-    activeTetromino.row4 -= activeTetromino.blockChange4[0];
-  }
   for (let kickTests = 0; invalidRotation === true && kickTests < 5; kickTests++) {
     invalidRotation = false;
     for (let checkMino of tetrisBoards.get("tetrisGame0").minos) {
@@ -449,30 +408,18 @@ function rotateTetromino(clockwise) {
       ) {
         if (activeTetromino.rotation === 0 && (clockwise || kickTests !== 0 && kickTests !== 2) && kickTests !== 2 || activeTetromino.rotation === 3 && (!clockwise || kickTests === 2) || activeTetromino.rotation === 1 && (clockwise && kickTests !== 2 || kickTests === 2 && ! clockwise) || activeTetromino.rotation === 2 && kickTests === 2) {
           if (kickTests === 0 || kickTests === 4) {
-            activeTetromino.column1 -= 2;
-            activeTetromino.column2 -= 2;
-            activeTetromino.column3 -= 2;
-            activeTetromino.column4 -= 2;
+            shiftActiveTetromino(true, 0, -2);
           }
           else {
-            activeTetromino.column1 += 3;
-            activeTetromino.column2 += 3;
-            activeTetromino.column3 += 3;
-            activeTetromino.column4 += 3;
+            shiftActiveTetromino(true, 0, 3);
           }
         }
         else {
           if (kickTests === 0) {
-            activeTetromino.column1 += 2;
-            activeTetromino.column2 += 2;
-            activeTetromino.column3 += 2;
-            activeTetromino.column4 += 2;
+            shiftActiveTetromino(true, 0, 2);
           }
           else if (kickTests === 1 || kickTests === 2) {
-            activeTetromino.column1 -= 3;
-            activeTetromino.column2 -= 3;
-            activeTetromino.column3 -= 3;
-            activeTetromino.column4 -= 3;
+            shiftActiveTetromino(true, 0, -3);
           }
         }
       }
@@ -511,16 +458,10 @@ function rotateTetromino(clockwise) {
           activeTetromino.rotation !== 1
           )
         ) {
-          activeTetromino.column1 -= 1;
-          activeTetromino.column2 -= 1;
-          activeTetromino.column3 -= 1;
-          activeTetromino.column4 -= 1;
+          shiftActiveTetromino(true, 0, -1);
         }
         else {
-          activeTetromino.column1 += 1;
-          activeTetromino.column2 += 1;
-          activeTetromino.column3 += 1;
-          activeTetromino.column4 += 1;
+          shiftActiveTetromino(true, 0, 1);
         }
       }
 
@@ -532,16 +473,10 @@ function rotateTetromino(clockwise) {
           kickTests !== 4 || 
           activeTetromino.rotation === 1 &&
           activeTetromino.color === "cyan") {
-          activeTetromino.row1 -= 1;
-          activeTetromino.row2 -= 1;
-          activeTetromino.row3 -= 1;
-          activeTetromino.row4 -= 1;
+          shiftActiveTetromino(true, -1);
         }
         else {
-          activeTetromino.row1 += 1;
-          activeTetromino.row2 += 1;
-          activeTetromino.row3 += 1;
-          activeTetromino.row4 += 1;
+          shiftActiveTetromino(true, 1);
         }
       }
 
@@ -554,16 +489,10 @@ function rotateTetromino(clockwise) {
           activeTetromino.rotation === 2 &&
           kickTests === 4 &&
           activeTetromino.color !== "cyan") {
-          activeTetromino.row1 -= 2;
-          activeTetromino.row2 -= 2;
-          activeTetromino.row3 -= 2;
-          activeTetromino.row4 -= 2;
+          shiftActiveTetromino(true, -2);
         }
         else {
-          activeTetromino.row1 += 2;
-          activeTetromino.row2 += 2;
-          activeTetromino.row3 += 2;
-          activeTetromino.row4 += 2;
+          shiftActiveTetromino(true, 2);
         }
       }
 
@@ -577,16 +506,10 @@ function rotateTetromino(clockwise) {
           activeTetromino.rotation === 1 &&
           activeTetromino.color === "cyan" &&
           kickTests === 3) {
-          activeTetromino.row1 += 3;
-          activeTetromino.row2 += 3;
-          activeTetromino.row3 += 3;
-          activeTetromino.row4 += 3;
+          shiftActiveTetromino(true, 3);
         }
         else {
-          activeTetromino.row1 -= 3;
-          activeTetromino.row2 -= 3;
-          activeTetromino.row3 -= 3;
-          activeTetromino.row4 -= 3;
+          shiftActiveTetromino(true, -3);
         }
       }
     }
@@ -643,6 +566,7 @@ function moveLeft() {
   else {
     leftTimeHeld = 0;
   }
+  activeTetromino.rotatedLast = false;
 }
   
 function moveRight() {
@@ -677,6 +601,8 @@ function moveRight() {
   else {
     rightTimeHeld = 0;
   }
+
+  activeTetromino.rotatedLast = false;
 }
     
 function drop() {
@@ -693,6 +619,7 @@ function drop() {
     if (!hardDropped) {
       hardDropped = true;
       hardDrop = "movePiece";
+      activeTetromino.rotatedLast = false;
     }
   }
   else {
@@ -758,6 +685,16 @@ function clearLines() {
     minosInRow = countMinosInRow();
   }
 
+  if (linesCleared) {
+    scoreClearLines(linesCleared);
+  }
+
+  else {
+    comboCounter = -1;
+  }
+}
+
+function scoreClearLines(linesCleared) {
   if (linesCleared === 1) {
     score += 100 * level;
   }
@@ -772,7 +709,10 @@ function clearLines() {
 
   else if (linesCleared === 4) {
     score += 800 * level;
-  }  
+  }
+
+  comboCounter++;
+  score += 50 * comboCounter * level;
 }
 
 function countMinosInRow() {
@@ -861,17 +801,58 @@ function moveActiveDownSlowly() {
   blockUnder = false;
 }
 
-function shiftActiveTetromino() {
-  for (let rowVariable = 1; rowVariable <= 4; rowVariable++) {
-    eval(`activeTetromino.row${rowVariable}++`);
+function shiftActiveTetromino(fullShift, rowChange1, columnChange1, rowChange2, columnChange2,
+  rowChange3, columnChange3, rowChange4, columnChange4) {
+  for (let minoNumber = 1; minoNumber <= 4; minoNumber++) {
+    if (fullShift) {
+      if (rowChange1) {
+        eval(`activeTetromino.row${minoNumber} += rowChange1`);
+      }
+
+      if (columnChange1) {
+        eval(`activeTetromino.column${minoNumber} += columnChange1`);
+      }
+    }
+
+    else {
+      eval(`activeTetromino.row${minoNumber} += rowChange${minoNumber}`);
+      eval(`activeTetromino.column${minoNumber} += columnChange${minoNumber}`);
+    }
   }
 }
 
 function goDownAndScore() {
-  shiftActiveTetromino();
+  shiftActiveTetromino(true, 1);
   lastUpdate = timer;
+  activeTetromino.rotatedLast = false;
 
   if (softDrop) {
     score++;
+  }
+}
+
+function initialRotation(clockwise) {
+  if (activeTetromino.rotation === 0 && clockwise || activeTetromino.rotation === 3 && !clockwise) {
+    shiftActiveTetromino(false, activeTetromino.blockChange1[1], activeTetromino.blockChange1[0],
+      activeTetromino.blockChange2[1], activeTetromino.blockChange2[0], activeTetromino.blockChange3[1],
+      activeTetromino.blockChange3[0], activeTetromino.blockChange4[1], activeTetromino.blockChange4[0]);
+  }
+
+  else if (activeTetromino.rotation === 1 && clockwise || activeTetromino.rotation === 0 && !clockwise) {
+    shiftActiveTetromino(false, activeTetromino.blockChange1[0], -activeTetromino.blockChange1[1],
+      activeTetromino.blockChange2[0], -activeTetromino.blockChange2[1], activeTetromino.blockChange3[0],
+      -activeTetromino.blockChange3[1], activeTetromino.blockChange4[0], -activeTetromino.blockChange4[1]);
+  }
+
+  else if (activeTetromino.rotation === 2 && clockwise || activeTetromino.rotation === 1 && !clockwise) {
+    shiftActiveTetromino(false, -activeTetromino.blockChange1[1], -activeTetromino.blockChange1[0],
+      -activeTetromino.blockChange2[1], -activeTetromino.blockChange2[0], -activeTetromino.blockChange3[1],
+      -activeTetromino.blockChange3[0], -activeTetromino.blockChange4[1], -activeTetromino.blockChange4[0]);
+  }
+
+  else {
+    shiftActiveTetromino(false, -activeTetromino.blockChange1[0], activeTetromino.blockChange1[1],
+      -activeTetromino.blockChange2[0], activeTetromino.blockChange2[1], -activeTetromino.blockChange3[0],
+      activeTetromino.blockChange3[1], -activeTetromino.blockChange4[0], activeTetromino.blockChange4[1]);
   }
 }
