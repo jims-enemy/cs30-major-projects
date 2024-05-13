@@ -365,6 +365,27 @@ function rotateTetromino(clockwise) {
 
   initialRotation(clockwise);
 
+  activeTetromino.kickTestsTaken = performKickTests(clockwise);
+
+  if (clockwise) {
+    activeTetromino.rotation++;
+    if (activeTetromino.rotation > 3) {
+      activeTetromino.rotation = 0;
+    }
+  }
+  else {
+    activeTetromino.rotation--;
+    if (activeTetromino.rotation < 0) {
+      activeTetromino.rotation = 3;
+    }
+  }
+
+  if (invalidRotation) {
+    activeTetromino = activeTetrominoOld;
+  }
+}
+
+function performKickTests(clockwise) {
   for (let kickTests = 0; invalidRotation === true && kickTests < 5; kickTests++) {
     invalidRotation = false;
     for (let checkMino of tetrisBoards.get("tetrisGame0").minos) {
@@ -513,23 +534,9 @@ function rotateTetromino(clockwise) {
         }
       }
     }
-  }
-
-  if (clockwise) {
-    activeTetromino.rotation++;
-    if (activeTetromino.rotation > 3) {
-      activeTetromino.rotation = 0;
+    if (!invalidRotation) {
+      return kickTests;
     }
-  }
-  else {
-    activeTetromino.rotation--;
-    if (activeTetromino.rotation < 0) {
-      activeTetromino.rotation = 3;
-    }
-  }
-
-  if (invalidRotation) {
-    activeTetromino = activeTetrominoOld;
   }
 }
 
