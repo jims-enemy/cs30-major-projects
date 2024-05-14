@@ -20,8 +20,25 @@ class Mino {
       this.row++;
     }
   }
-}
 
+  neighborT() {
+    const neighbors = (rowOrColumn, change, secondOperator) => 
+      eval(`this.${rowOrColumn} + ${change} === activeTetromino.${rowOrColumn}2 ||
+    this.${rowOrColumn} ${secondOperator} ${change} === activeTetromino.${rowOrColumn}2`);
+
+    if (neighbors("row", 0, "-") && neighbors("column", 1, "-") && isRotation(2, 2) ||
+    neighbors("column", 0, "-") && neighbors("row", 1, "-") && isRotation(3, 2)) {
+      activeTetromino.frontCornerNeighbors++;
+    }
+
+    else if (neighbors("row", 2, "+") && neighbors("column", 1, "-") && isRotation(2, 0) || 
+    neighbors("row", -2, "+") && neighbors("column", 1, "-") && isRotation(0, 0) ||
+  neighbors("column", -2, "+") && neighbors("row", 1, "-") && isRotation(3, 0) || 
+  neighbors("column", 2, "+") && neighbors("row", 1, "-") && isRotation(1, 0)) {
+      activeTetromino.rearCornerNeighbors++;
+    }
+  }
+}
 class TetrisBoard {
   constructor(x1, y1, x2, y2, minos) {
     this.x1 = x1;
@@ -104,6 +121,15 @@ const KEY_X = 88;
 const KEY_W = 87;
 const KEY_Z = 90;
 const KEY_C = 67;
+
+const isRotation = (rotationToCheck, differentRotation) => activeTetromino.rotation === rotationToCheck ||
+    activeTetromino.rotation === rotationToCheck - differentRotation;
+
+const miniTSpin = () => activeTetromino.frontCornerNeighbors === 1 && activeTetromino.rearCornerNeighbors >= 2;
+
+const tSpin = () => activeTetromino.frontCornerNeighbors >= 2 && activeTetromino.rearCornerNeighbors >= 1 ||
+miniTSpin() && activeTetromino.kickTestsTaken === 4;
+
 
 function setup() {
   createCanvas(windowWidth, windowHeight);
@@ -340,7 +366,9 @@ function moveActiveTetromino() {
         blockChange1: [1, -1],
         blockChange2: [1, 1],
         blockChange3: [0, 0],
-        blockChange4: [-1, 1]
+        blockChange4: [-1, 1],
+        frontCornerNeighbors: 0,
+        rearCornerNeighbors: 0
       };
     }
     bag.shift();
@@ -692,26 +720,44 @@ function clearLines() {
     minosInRow = countMinosInRow();
   }
 
+  if (activeTetromino.color === "purple") {
+    for (let currentMino of tetrisBoards.get("tetrisGame0").minos) {
+      currentMino.neighborT();
+    }
+
+    if (isRotation(3, 2) && (activeTetromino.rotation - 1) * 4.5 === activeTetromino.column1) {
+      activeTetromino.rearCornerNeighbors++;
+    }
+  }
+
   if (linesCleared) {
     scoreClearLines(linesCleared);
   }
 
   else {
+    if (tSpin()) {
+      score += 400 * level;
+    }
+    
+    else if (miniTSpin()) {
+      score += 100 * level;
+    }
+
     comboCounter = -1;
   }
 }
 
 function scoreClearLines(linesCleared) {
   if (linesCleared === 1) {
-    score += 100 * level;
+    scoreClearTSpins(800, 200, 100);
   }
   
   else if (linesCleared === 2) {
-    score += 300 * level;
+    scoreClearTSpins(1200, 400, 300);
   }
 
   else if (linesCleared === 3) {
-    score += 500 * level;
+    scoreClearTSpins(1600, 0, 500);
   }
 
   else if (linesCleared === 4) {
@@ -720,6 +766,20 @@ function scoreClearLines(linesCleared) {
 
   comboCounter++;
   score += 50 * comboCounter * level;
+}
+
+function scoreClearTSpins(tSpinScore, miniScore, defaultScore) {
+  if (tSpin) {
+    score += tSpinScore * level;
+  }
+
+  else if (miniTSpin) {
+    score += miniScore * level;
+  }
+  
+  else {
+    score += defaultScore * level;
+  }
 }
 
 function countMinosInRow() {
@@ -803,6 +863,7 @@ function moveActiveDownSlowly() {
     activeTetromino.isActive = false;
     hardDrop = false;
     canHold = true;
+
     clearLines();
   }
   blockUnder = false;
