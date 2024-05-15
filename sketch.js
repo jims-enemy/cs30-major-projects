@@ -73,6 +73,20 @@ class TetrisBoard {
       currentMino.display(this.x1, this.y1, this.x2, this.y2);
     }
   }
+
+  toggleCell() {
+    let x = Math.floor(mouseX/(width/(columnLines*3))) - columnLines;
+    let y = Math.floor(mouseY/(height/rowLines));
+
+    for (let currentMino = 0; currentMino < this.minos.length; currentMino++) {
+      if (this.minos[currentMino].column === x && this.minos[currentMino].row === y) {
+        this.minos.splice(currentMino, 1);
+        return;
+      }
+    }
+
+    this.minos.push(new Mino(y, x, "Grey"));
+  }
 }
 
 let columnLines = 10;
@@ -104,6 +118,12 @@ let canHold = true;
 let heldPiece;
 let score = 0;
 let comboCounter = -1;
+let difficultClear = false;
+let gamemode = "PT";
+let timePaused = 0;
+let justTetrised = false;
+let entryDelay = 0;
+let totalLinesCleared = 0;
 
 const SWAP = 1;
 const I = 2;
@@ -157,15 +177,22 @@ function setup() {
 }
 
 function draw() {
-  timer = millis();
   background("black");
-
+  
   // Draws each game.
   for(let gameNumber = 0; gameNumber < games; gameNumber++) {
     tetrisBoards.get(`tetrisGame${gameNumber}`).display();
   }
-  controlTetris();
-  moveActiveTetromino();
+
+  if (gamemode === "PT") {
+    timer = millis() - timePaused;
+    controlTetris();
+    moveActiveTetromino();
+  }
+
+  else {
+    timePaused = millis() - timer;
+  }
 }
 
 function windowResized() {
@@ -240,138 +267,144 @@ function moveActiveTetromino() {
     updatePosition();
   }
   else {
-    if (bag[0] === SWAP) {
-      swap();
+    if (entryDelay >= 6) {
+      entryDelay = 0;
+      if (bag[0] === SWAP) {
+        swap();
+      }
+      else if (bag[0] === I) {
+        activeTetromino = {color: "cyan",
+          isActive: true,
+          rotation: 0,
+          column1: Math.floor(columnLines/2) - 2,
+          row1: -1,
+          column2: Math.floor(columnLines/2) - 1,
+          row2: -1,
+          column3: Math.floor(columnLines/2),
+          row3: -1,
+          column4: Math.floor(columnLines/2) + 1,
+          row4: -1,
+          blockChange1: [2, -1],
+          blockChange2: [1, 0],
+          blockChange3: [0, 1],
+          blockChange4: [-1, 2]
+        };
+      }
+      else if (bag[0] === J) {
+        activeTetromino = {color: "blue",
+          isActive: true,
+          rotation: 0,
+          column1: Math.floor(columnLines/2) - 2,
+          row1: -1,
+          column2: Math.floor(columnLines/2) - 2,
+          row2: 0,
+          column3: Math.floor(columnLines/2) - 1,
+          row3: 0,
+          column4: Math.floor(columnLines/2),
+          row4: 0,
+          blockChange1: [2, 0],
+          blockChange2: [1, -1],
+          blockChange3: [0, 0],
+          blockChange4: [-1, 1]
+        };
+      }
+      else if (bag[0] === L) {
+        activeTetromino = {color: "orange",
+          isActive: true,
+          rotation: 0,
+          column1: Math.floor(columnLines/2) - 2,
+          row1: 0,
+          column2: Math.floor(columnLines/2) - 1,
+          row2: 0,
+          column3: Math.floor(columnLines/2),
+          row3: 0,
+          column4: Math.floor(columnLines/2),
+          row4: -1,
+          blockChange1: [1, -1],
+          blockChange2: [0, 0],
+          blockChange3: [-1, 1],
+          blockChange4: [0, 2]
+        };
+      }
+      else if (bag[0] === O) {
+        activeTetromino = {color: "yellow",
+          isActive: true,
+          rotation: 0,
+          column1: Math.floor(columnLines/2) - 1,
+          row1: -1,
+          column2: Math.floor(columnLines/2) - 1,
+          row2: 0,
+          column3: Math.floor(columnLines/2),
+          row3: -1,
+          column4: Math.floor(columnLines/2),
+          row4: 0,
+          blockChange1: [0, 0],
+          blockChange2: [0, 0],
+          blockChange3: [0, 0],
+          blockChange4: [0, 0]
+        };
+      }
+      else if (bag[0] === S) {
+        activeTetromino = {color: "green",
+          isActive: true,
+          rotation: 0,
+          column1: Math.floor(columnLines/2) - 2,
+          row1: 0,
+          column2: Math.floor(columnLines/2) - 1,
+          row2: 0,
+          column3: Math.floor(columnLines/2) - 1,
+          row3: -1,
+          column4: Math.floor(columnLines/2),
+          row4: -1,
+          blockChange1: [1, -1],
+          blockChange2: [0, 0],
+          blockChange3: [1, 1],
+          blockChange4: [0, 2]
+        };
+      }
+      else if (bag[0] === Z) {
+        activeTetromino = {color: "red",
+          isActive: true,
+          rotation: 0,
+          column1: Math.floor(columnLines/2) - 2,
+          row1: -1,
+          column2: Math.floor(columnLines/2) - 1,
+          row2: -1,
+          column3: Math.floor(columnLines/2) - 1,
+          row3: 0,
+          column4: Math.floor(columnLines/2),
+          row4: 0,
+          blockChange1: [2, 0],
+          blockChange2: [1, 1],
+          blockChange3: [0, 0],
+          blockChange4: [-1, 1]
+        };
+      }
+      else { //T
+        activeTetromino = {color: "purple",
+          isActive: true,
+          rotation: 0,
+          column1: Math.floor(columnLines/2) - 2,
+          row1: 0,
+          column2: Math.floor(columnLines/2) - 1,
+          row2: -1,
+          column3: Math.floor(columnLines/2) - 1,
+          row3: 0,
+          column4: Math.floor(columnLines/2),
+          row4: 0,
+          blockChange1: [1, -1],
+          blockChange2: [1, 1],
+          blockChange3: [0, 0],
+          blockChange4: [-1, 1],
+          frontCornerNeighbors: 0,
+          rearCornerNeighbors: 0
+        };
+      }
+      bag.shift();
     }
-    else if (bag[0] === I) {
-      activeTetromino = {color: "cyan",
-        isActive: true,
-        rotation: 0,
-        column1: Math.floor(columnLines/2) - 2,
-        row1: -1,
-        column2: Math.floor(columnLines/2) - 1,
-        row2: -1,
-        column3: Math.floor(columnLines/2),
-        row3: -1,
-        column4: Math.floor(columnLines/2) + 1,
-        row4: -1,
-        blockChange1: [2, -1],
-        blockChange2: [1, 0],
-        blockChange3: [0, 1],
-        blockChange4: [-1, 2]
-      };
+    else {
+      entryDelay++;
     }
-    else if (bag[0] === J) {
-      activeTetromino = {color: "blue",
-        isActive: true,
-        rotation: 0,
-        column1: Math.floor(columnLines/2) - 2,
-        row1: -1,
-        column2: Math.floor(columnLines/2) - 2,
-        row2: 0,
-        column3: Math.floor(columnLines/2) - 1,
-        row3: 0,
-        column4: Math.floor(columnLines/2),
-        row4: 0,
-        blockChange1: [2, 0],
-        blockChange2: [1, -1],
-        blockChange3: [0, 0],
-        blockChange4: [-1, 1]
-      };
-    }
-    else if (bag[0] === L) {
-      activeTetromino = {color: "orange",
-        isActive: true,
-        rotation: 0,
-        column1: Math.floor(columnLines/2) - 2,
-        row1: 0,
-        column2: Math.floor(columnLines/2) - 1,
-        row2: 0,
-        column3: Math.floor(columnLines/2),
-        row3: 0,
-        column4: Math.floor(columnLines/2),
-        row4: -1,
-        blockChange1: [1, -1],
-        blockChange2: [0, 0],
-        blockChange3: [-1, 1],
-        blockChange4: [0, 2]
-      };
-    }
-    else if (bag[0] === O) {
-      activeTetromino = {color: "yellow",
-        isActive: true,
-        rotation: 0,
-        column1: Math.floor(columnLines/2) - 1,
-        row1: -1,
-        column2: Math.floor(columnLines/2) - 1,
-        row2: 0,
-        column3: Math.floor(columnLines/2),
-        row3: -1,
-        column4: Math.floor(columnLines/2),
-        row4: 0,
-        blockChange1: [0, 0],
-        blockChange2: [0, 0],
-        blockChange3: [0, 0],
-        blockChange4: [0, 0]
-      };
-    }
-    else if (bag[0] === S) {
-      activeTetromino = {color: "green",
-        isActive: true,
-        rotation: 0,
-        column1: Math.floor(columnLines/2) - 2,
-        row1: 0,
-        column2: Math.floor(columnLines/2) - 1,
-        row2: 0,
-        column3: Math.floor(columnLines/2) - 1,
-        row3: -1,
-        column4: Math.floor(columnLines/2),
-        row4: -1,
-        blockChange1: [1, -1],
-        blockChange2: [0, 0],
-        blockChange3: [1, 1],
-        blockChange4: [0, 2]
-      };
-    }
-    else if (bag[0] === Z) {
-      activeTetromino = {color: "red",
-        isActive: true,
-        rotation: 0,
-        column1: Math.floor(columnLines/2) - 2,
-        row1: -1,
-        column2: Math.floor(columnLines/2) - 1,
-        row2: -1,
-        column3: Math.floor(columnLines/2) - 1,
-        row3: 0,
-        column4: Math.floor(columnLines/2),
-        row4: 0,
-        blockChange1: [2, 0],
-        blockChange2: [1, 1],
-        blockChange3: [0, 0],
-        blockChange4: [-1, 1]
-      };
-    }
-    else { //T
-      activeTetromino = {color: "purple",
-        isActive: true,
-        rotation: 0,
-        column1: Math.floor(columnLines/2) - 2,
-        row1: 0,
-        column2: Math.floor(columnLines/2) - 1,
-        row2: -1,
-        column3: Math.floor(columnLines/2) - 1,
-        row3: 0,
-        column4: Math.floor(columnLines/2),
-        row4: 0,
-        blockChange1: [1, -1],
-        blockChange2: [1, 1],
-        blockChange3: [0, 0],
-        blockChange4: [-1, 1],
-        frontCornerNeighbors: 0,
-        rearCornerNeighbors: 0
-      };
-    }
-    bag.shift();
   }
   if (bag.length < 7) {
     fillBag();
@@ -588,12 +621,8 @@ function moveLeft() {
       }
     }
       
-    // Shifts the tetromino left if it is possible. Also, includes a delay for precision.
-    if(!obstructionOnLeftSide && (leftTimeHeld === 0 || leftTimeHeld >= holdDelay)) {
-      activeTetromino.column1--;
-      activeTetromino.column2--;
-      activeTetromino.column3--;
-      activeTetromino.column4--;
+    if(!obstructionOnLeftSide && (leftTimeHeld === 0 || leftTimeHeld >= holdDelay && leftTimeHeld % 2 !== 0)) {
+      shiftActiveTetromino(true, 0, -1);
     }
     obstructionOnLeftSide = false;
     leftTimeHeld++;
@@ -623,8 +652,7 @@ function moveRight() {
       }
     }
         
-    // Shifts the tetromino right if it is possible. Also, includes a delay for precision.
-    if(!obstructionOnRightSide && (rightTimeHeld === 0 || rightTimeHeld >= holdDelay)) {
+    if(!obstructionOnRightSide && (rightTimeHeld === 0 || rightTimeHeld >= holdDelay && rightTimeHeld % 2 !== 0)) {
       activeTetromino.column1++;
       activeTetromino.column2++;
       activeTetromino.column3++;
@@ -743,25 +771,53 @@ function clearLines() {
       score += 100 * level;
     }
 
+    else {
+      difficultClear = false;
+    }
+
     comboCounter = -1;
+    justTetrised = false;
+  }
+
+  totalLinesCleared += linesCleared;
+  if (totalLinesCleared >= 10 * level) {
+    level++;
   }
 }
 
 function scoreClearLines(linesCleared) {
   if (linesCleared === 1) {
     scoreClearTSpins(800, 200, 100);
+    if (tetrisBoards.get("tetrisGame0").minos) {
+      score += 800 * level;
+    }
   }
   
   else if (linesCleared === 2) {
     scoreClearTSpins(1200, 400, 300);
+    if (tetrisBoards.get("tetrisGame0").minos) {
+      score += 1200 * level;
+    }
   }
 
   else if (linesCleared === 3) {
     scoreClearTSpins(1600, 0, 500);
+    if (tetrisBoards.get("tetrisGame0").minos) {
+      score += 1800 * level;
+    }
   }
 
-  else if (linesCleared === 4) {
-    score += 800 * level;
+  if (linesCleared === 4) {
+    score += 800 * level * (1.5 * difficultClear);
+    difficultClear = true;
+    if (tetrisBoards.get("tetrisGame0").minos) {
+      score += (2000 + 1200 * justTetrised) * level;
+    }
+    justTetrised = true;
+  }
+  
+  else {
+    justTetrised = false;
   }
 
   comboCounter++;
@@ -770,15 +826,18 @@ function scoreClearLines(linesCleared) {
 
 function scoreClearTSpins(tSpinScore, miniScore, defaultScore) {
   if (tSpin) {
-    score += tSpinScore * level;
+    score += tSpinScore * level * (1.5 * difficultClear);
+    difficultClear = true;
   }
 
   else if (miniTSpin) {
-    score += miniScore * level;
+    score += miniScore * level * (1.5 * difficultClear);
+    difficultClear = true;
   }
   
   else {
     score += defaultScore * level;
+    difficultClear = false;
   }
 }
 
@@ -922,5 +981,23 @@ function initialRotation(clockwise) {
     shiftActiveTetromino(false, -activeTetromino.blockChange1[0], activeTetromino.blockChange1[1],
       -activeTetromino.blockChange2[0], activeTetromino.blockChange2[1], -activeTetromino.blockChange3[0],
       activeTetromino.blockChange3[1], -activeTetromino.blockChange4[0], activeTetromino.blockChange4[1]);
+  }
+}
+
+function keyPressed() {
+  if (key === "p") {
+    if (gamemode === "PT") {
+      gamemode = "TM";
+    }
+
+    else {
+      gamemode ="PT";
+    }
+  }
+}
+
+function mousePressed() {
+  if (gamemode === "TM" && mouseX > width/3 && mouseX < width*2/3) {
+    tetrisBoards.get("tetrisGame0").toggleCell();
   }
 }
