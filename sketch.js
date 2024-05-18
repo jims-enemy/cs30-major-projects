@@ -63,24 +63,30 @@ class TetrisBoard {
     }
   }
   
-  display() {
+  display(gameNumber, drawGrid) {
     stroke("white");
 
+    if (drawGrid) {
     // Draws the columns.
-    for(let currentColumn = 0; currentColumn < columnLines + 1; currentColumn++) {
-      let xValue = (this.x2 - this.x1)/columnLines * currentColumn + this.x1;
-      line(xValue, this.y1, xValue, this.y2);
-    }
+      for(let currentColumn = 0; currentColumn < columnLines + 1; currentColumn++) {
+        let xValue = (this.x2 - this.x1)/columnLines * currentColumn + this.x1;
+        line(xValue, this.y1, xValue, this.y2);
+      }
 
-    // Draws the rows.
-    for(let currentRow = 0; currentRow < rowLines + 1; currentRow++) {
-      let yValue =  (this.y2 - this.y1)/rowLines * currentRow + this.y1;
-      line(this.x1, yValue, this.x2, yValue);
+      // Draws the rows.
+      for(let currentRow = 0; currentRow < rowLines + 1; currentRow++) {
+        let yValue =  (this.y2 - this.y1)/rowLines * currentRow + this.y1;
+        line(this.x1, yValue, this.x2, yValue);
+      }
     }
 
     // Draws the minos.
     for(let currentMino of this.minos) {
       currentMino.display(this.x1, this.y1, this.x2, this.y2);
+    }
+
+    if (gameNumber === 0) {
+      this.drawUI();
     }
   }
 
@@ -96,6 +102,48 @@ class TetrisBoard {
     }
 
     this.minos.push(new Mino(y, x, "Grey"));
+  }
+
+  drawUI() {
+    textAlign(CENTER, TOP);
+    fill("white");
+    
+    if (width/80 * 3 < height/667 * 30) {
+      textSize(width/80 * 3);
+    }
+
+    else {
+      textSize(height/667 * 30);
+    }
+    
+    text("NEXT", this.x2 + width/20, this.y1);
+  }
+
+  updateNextPiece() {
+    this.minos = [];
+    for (let bagIndex = 0; bagIndex < 7; bagIndex++) {
+      if (whatIsInTheBag(bagIndex) === "swap") {
+        textAlign(CENTER, TOP);
+        fill("white");
+    
+        if (width/80 * 3 < height/667 * 30) {
+          textSize(width/80 * 3);
+        }
+
+        else {
+          textSize(height/667 * 30);
+        }
+    
+        text("SWAP", this.x1 + width/20, this.y1 + 2.5*height*bagIndex/rowLines);
+      }
+
+      else {
+        for (let minoNumber = 1; minoNumber <= 4; minoNumber++) {
+          eval(`this.minos.push(new Mino(whatIsInTheBag(bagIndex).row${minoNumber} + 1 + 2.5 * bagIndex,
+          whatIsInTheBag(bagIndex).column${minoNumber} - 3, whatIsInTheBag(bagIndex).color))`);
+        }
+      }
+    }
   }
 }
 
@@ -147,6 +195,7 @@ const L = 4;
 const O = 5;
 const S = 6;
 const Z = 7;
+const T = 8;
 
 const KEY_D = 68;
 const KEY_A = 65;
@@ -156,6 +205,138 @@ const KEY_X = 88;
 const KEY_W = 87;
 const KEY_Z = 90;
 const KEY_C = 67;
+
+const ACTIVE_MINO_I = {color: "cyan",
+  isActive: true,
+  rotation: 0,
+  column1: Math.floor(columnLines/2) - 2,
+  row1: -1,
+  column2: Math.floor(columnLines/2) - 1,
+  row2: -1,
+  column3: Math.floor(columnLines/2),
+  row3: -1,
+  column4: Math.floor(columnLines/2) + 1,
+  row4: -1,
+  blockChange1: [2, -1],
+  blockChange2: [1, 0],
+  blockChange3: [0, 1],
+  blockChange4: [-1, 2]
+};
+
+const ACTIVE_MINO_J = {color: "blue",
+  isActive: true,
+  rotation: 0,
+  column1: Math.floor(columnLines/2) - 2,
+  row1: -1,
+  column2: Math.floor(columnLines/2) - 2,
+  row2: 0,
+  column3: Math.floor(columnLines/2) - 1,
+  row3: 0,
+  column4: Math.floor(columnLines/2),
+  row4: 0,
+  blockChange1: [2, 0],
+  blockChange2: [1, -1],
+  blockChange3: [0, 0],
+  blockChange4: [-1, 1]
+};
+
+const ACTIVE_MINO_L = {color: "orange",
+  isActive: true,
+  rotation: 0,
+  column1: Math.floor(columnLines/2) - 2,
+  row1: 0,
+  column2: Math.floor(columnLines/2) - 1,
+  row2: 0,
+  column3: Math.floor(columnLines/2),
+  row3: 0,
+  column4: Math.floor(columnLines/2),
+  row4: -1,
+  blockChange1: [1, -1],
+  blockChange2: [0, 0],
+  blockChange3: [-1, 1],
+  blockChange4: [0, 2]
+};
+
+const ACTIVE_MINO_O = {color: "yellow",
+  isActive: true,
+  rotation: 0,
+  column1: Math.floor(columnLines/2) - 1,
+  row1: -1,
+  column2: Math.floor(columnLines/2) - 1,
+  row2: 0,
+  column3: Math.floor(columnLines/2),
+  row3: -1,
+  column4: Math.floor(columnLines/2),
+  row4: 0,
+  blockChange1: [0, 0],
+  blockChange2: [0, 0],
+  blockChange3: [0, 0],
+  blockChange4: [0, 0]
+};
+
+const ACTIVE_MINO_S = {color: "green",
+  isActive: true,
+  rotation: 0,
+  column1: Math.floor(columnLines/2) - 2,
+  row1: 0,
+  column2: Math.floor(columnLines/2) - 1,
+  row2: 0,
+  column3: Math.floor(columnLines/2) - 1,
+  row3: -1,
+  column4: Math.floor(columnLines/2),
+  row4: -1,
+  blockChange1: [1, -1],
+  blockChange2: [0, 0],
+  blockChange3: [1, 1],
+  blockChange4: [0, 2]
+};
+
+const ACTIVE_MINO_Z = {color: "red",
+  isActive: true,
+  rotation: 0,
+  column1: Math.floor(columnLines/2) - 2,
+  row1: -1,
+  column2: Math.floor(columnLines/2) - 1,
+  row2: -1,
+  column3: Math.floor(columnLines/2) - 1,
+  row3: 0,
+  column4: Math.floor(columnLines/2),
+  row4: 0,
+  blockChange1: [2, 0],
+  blockChange2: [1, 1],
+  blockChange3: [0, 0],
+  blockChange4: [-1, 1]
+};
+
+const ACTIVE_MINO_T = {color: "purple",
+  isActive: true,
+  rotation: 0,
+  column1: Math.floor(columnLines/2) - 2,
+  row1: 0,
+  column2: Math.floor(columnLines/2) - 1,
+  row2: -1,
+  column3: Math.floor(columnLines/2) - 1,
+  row3: 0,
+  column4: Math.floor(columnLines/2),
+  row4: 0,
+  blockChange1: [1, -1],
+  blockChange2: [1, 1],
+  blockChange3: [0, 0],
+  blockChange4: [-1, 1],
+  frontCornerNeighbors: 0,
+  rearCornerNeighbors: 0
+};
+
+const ACTIVE_MINO_SWAP = {color: "black",
+  column1: columnLines**2,
+  row1: rowLines**2,
+  column2: columnLines**2,
+  row2: rowLines**2,
+  column3: columnLines**2,
+  row3: rowLines**2,
+  column4: columnLines**2,
+  row4: rowLines**2,
+};
 
 const isRotation = (rotationToCheck, differentRotation) => activeTetromino.rotation === rotationToCheck ||
     activeTetromino.rotation === rotationToCheck - differentRotation;
@@ -188,6 +369,9 @@ function setup() {
     }
   }
 
+  // Sets up the coordinates for the next piece board.
+  tetrisBoards.set("nextPiece", new TetrisBoard(width/3 * 2, height/20, width, height/20 * 21));
+
   fillBag();
 }
 
@@ -196,8 +380,10 @@ function draw() {
   
   // Draws each game.
   for(let gameNumber = 0; gameNumber < games; gameNumber++) {
-    tetrisBoards.get(`tetrisGame${gameNumber}`).display();
+    tetrisBoards.get(`tetrisGame${gameNumber}`).display(gameNumber, true);
   }
+
+  tetrisBoards.get("nextPiece").display();
 
   if (gamemode === "PT") {
     timer = millis() - timePaused;
@@ -208,6 +394,7 @@ function draw() {
   else {
     timePaused = millis() - timer;
   }
+  tetrisBoards.get("nextPiece").updateNextPiece();
 }
 
 function windowResized() {
@@ -234,6 +421,10 @@ function windowResized() {
       currentGame++;
     }
   }
+
+  // Sets up the coordinates for the next piece board.
+  tetrisBoards.set("nextPiece", new TetrisBoard(width/3 * 2, height/20, width,
+    height/20 * 21, tetrisBoards.get("nextPiece").minos));
 }
 
 function swap() {
@@ -244,7 +435,7 @@ function swap() {
 
   // Loops through every tetris game except the first one, giving the previous game it's value.
   for (let [nameOfGame, tetrisInformation] of tetrisBoards) {
-    if (nameOfGame !== "tetrisGame0") {
+    if (nameOfGame !== "tetrisGame0" && nameOfGame !== "nextPiece") {
       tetrisBoards.set(`tetrisGame${numberOfGame - 1}`, tetrisInformation);
       numberOfGame++;
     }
@@ -293,138 +484,48 @@ function moveActiveTetromino() {
 }
 
 function grabNextFromBag() {
-  if (bag[0] === SWAP) {
+  if (whatIsInTheBag(0) === "swap") {
     swap();
   }
-  else if (bag[0] === I) {
-    activeTetromino = {color: "cyan",
-      isActive: true,
-      rotation: 0,
-      column1: Math.floor(columnLines/2) - 2,
-      row1: -1,
-      column2: Math.floor(columnLines/2) - 1,
-      row2: -1,
-      column3: Math.floor(columnLines/2),
-      row3: -1,
-      column4: Math.floor(columnLines/2) + 1,
-      row4: -1,
-      blockChange1: [2, -1],
-      blockChange2: [1, 0],
-      blockChange3: [0, 1],
-      blockChange4: [-1, 2]
-    };
+  else {
+    activeTetromino = whatIsInTheBag(0);
   }
-  else if (bag[0] === J) {
-    activeTetromino = {color: "blue",
-      isActive: true,
-      rotation: 0,
-      column1: Math.floor(columnLines/2) - 2,
-      row1: -1,
-      column2: Math.floor(columnLines/2) - 2,
-      row2: 0,
-      column3: Math.floor(columnLines/2) - 1,
-      row3: 0,
-      column4: Math.floor(columnLines/2),
-      row4: 0,
-      blockChange1: [2, 0],
-      blockChange2: [1, -1],
-      blockChange3: [0, 0],
-      blockChange4: [-1, 1]
-    };
-  }
-  else if (bag[0] === L) {
-    activeTetromino = {color: "orange",
-      isActive: true,
-      rotation: 0,
-      column1: Math.floor(columnLines/2) - 2,
-      row1: 0,
-      column2: Math.floor(columnLines/2) - 1,
-      row2: 0,
-      column3: Math.floor(columnLines/2),
-      row3: 0,
-      column4: Math.floor(columnLines/2),
-      row4: -1,
-      blockChange1: [1, -1],
-      blockChange2: [0, 0],
-      blockChange3: [-1, 1],
-      blockChange4: [0, 2]
-    };
-  }
-  else if (bag[0] === O) {
-    activeTetromino = {color: "yellow",
-      isActive: true,
-      rotation: 0,
-      column1: Math.floor(columnLines/2) - 1,
-      row1: -1,
-      column2: Math.floor(columnLines/2) - 1,
-      row2: 0,
-      column3: Math.floor(columnLines/2),
-      row3: -1,
-      column4: Math.floor(columnLines/2),
-      row4: 0,
-      blockChange1: [0, 0],
-      blockChange2: [0, 0],
-      blockChange3: [0, 0],
-      blockChange4: [0, 0]
-    };
-  }
-  else if (bag[0] === S) {
-    activeTetromino = {color: "green",
-      isActive: true,
-      rotation: 0,
-      column1: Math.floor(columnLines/2) - 2,
-      row1: 0,
-      column2: Math.floor(columnLines/2) - 1,
-      row2: 0,
-      column3: Math.floor(columnLines/2) - 1,
-      row3: -1,
-      column4: Math.floor(columnLines/2),
-      row4: -1,
-      blockChange1: [1, -1],
-      blockChange2: [0, 0],
-      blockChange3: [1, 1],
-      blockChange4: [0, 2]
-    };
-  }
-  else if (bag[0] === Z) {
-    activeTetromino = {color: "red",
-      isActive: true,
-      rotation: 0,
-      column1: Math.floor(columnLines/2) - 2,
-      row1: -1,
-      column2: Math.floor(columnLines/2) - 1,
-      row2: -1,
-      column3: Math.floor(columnLines/2) - 1,
-      row3: 0,
-      column4: Math.floor(columnLines/2),
-      row4: 0,
-      blockChange1: [2, 0],
-      blockChange2: [1, 1],
-      blockChange3: [0, 0],
-      blockChange4: [-1, 1]
-    };
-  }
-  else { //T
-    activeTetromino = {color: "purple",
-      isActive: true,
-      rotation: 0,
-      column1: Math.floor(columnLines/2) - 2,
-      row1: 0,
-      column2: Math.floor(columnLines/2) - 1,
-      row2: -1,
-      column3: Math.floor(columnLines/2) - 1,
-      row3: 0,
-      column4: Math.floor(columnLines/2),
-      row4: 0,
-      blockChange1: [1, -1],
-      blockChange2: [1, 1],
-      blockChange3: [0, 0],
-      blockChange4: [-1, 1],
-      frontCornerNeighbors: 0,
-      rearCornerNeighbors: 0
-    };
-  }
+
   bag.shift();
+}
+
+function whatIsInTheBag(currentIndex) {
+  if (bag[currentIndex] === SWAP) {
+    return "swap";
+  }
+
+  else if (bag[currentIndex] === I) {
+    return {...ACTIVE_MINO_I};
+  }
+
+  else if (bag[currentIndex] === J) {
+    return {...ACTIVE_MINO_J};
+  }
+
+  else if (bag[currentIndex] === L) {
+    return {...ACTIVE_MINO_L};
+  }
+
+  else if (bag[currentIndex] === O) {
+    return {...ACTIVE_MINO_O};
+  }
+
+  else if (bag[currentIndex] === S) {
+    return {...ACTIVE_MINO_S};
+  }
+
+  else if (bag[currentIndex] === Z) {
+    return {...ACTIVE_MINO_Z};
+  }
+
+  else { //T
+    return {...ACTIVE_MINO_T};
+  }
 }
 
 
@@ -639,6 +740,9 @@ function moveLeft() {
       if (leftTimeHeld !== 0) {
         if (didLeftDAS) {
           leftTimeStartedHeld += 100/3;
+          if (timer - leftTimeStartedHeld >= 100/3 + holdDelay) {
+            moveLeft();
+          }
         }
         didLeftDAS = true;
       }
@@ -674,6 +778,9 @@ function moveRight() {
       if (rightTimeHeld !== 0) {
         if (didRightDAS) {
           rightTimeStartedHeld += 100/3;
+          if (timer - rightTimeStartedHeld >= 100/3 + holdDelay) {
+            moveRight();
+          }
         }
         didRightDAS = true;
       }
@@ -809,21 +916,21 @@ function clearLines() {
 function scoreClearLines(linesCleared) {
   if (linesCleared === 1) {
     scoreClearTSpins(800, 200, 100);
-    if (tetrisBoards.get("tetrisGame0").minos) {
+    if (tetrisBoards.get("tetrisGame0").minos.length === 0) {
       score += 800 * level;
     }
   }
   
   else if (linesCleared === 2) {
     scoreClearTSpins(1200, 400, 300);
-    if (tetrisBoards.get("tetrisGame0").minos) {
+    if (tetrisBoards.get("tetrisGame0").minos.length === 0) {
       score += 1200 * level;
     }
   }
 
   else if (linesCleared === 3) {
     scoreClearTSpins(1600, 0, 500);
-    if (tetrisBoards.get("tetrisGame0").minos) {
+    if (tetrisBoards.get("tetrisGame0").minos.length === 0) {
       score += 1800 * level;
     }
   }
@@ -831,7 +938,7 @@ function scoreClearLines(linesCleared) {
   if (linesCleared === 4) {
     score += 800 * level * (1.5 * difficultClear);
     difficultClear = true;
-    if (tetrisBoards.get("tetrisGame0").minos) {
+    if (tetrisBoards.get("tetrisGame0").minos.length === 0) {
       score += (2000 + 1200 * justTetrised) * level;
     }
     justTetrised = true;
@@ -846,14 +953,16 @@ function scoreClearLines(linesCleared) {
 }
 
 function scoreClearTSpins(tSpinScore, miniScore, defaultScore) {
-  if (tSpin) {
-    score += tSpinScore * level * (1.5 * difficultClear);
-    difficultClear = true;
-  }
+  if (activeTetromino.color === "purple" && (tSpin() || miniTSpin())) {
+    if (tSpin()) {
+      score += tSpinScore * level * (1.5 * difficultClear);
+      difficultClear = true;
+    }
 
-  else if (miniTSpin) {
-    score += miniScore * level * (1.5 * difficultClear);
-    difficultClear = true;
+    else if (miniTSpin()) {
+      score += miniScore * level * (1.5 * difficultClear);
+      difficultClear = true;
+    }
   }
   
   else {
@@ -875,11 +984,11 @@ function countMinosInRow() {
   return minosInRow;
 }
 
-function updatePosition() {
+function updatePosition(secondCheck) {
   if (activeTetromino.row1 >= 0 &&
     activeTetromino.row2 >= 0 &&
     activeTetromino.row3 >= 0 &&
-    activeTetromino.row4 >= 0) {
+    activeTetromino.row4 >= 0 && !secondCheck) {
     fill(activeTetromino.color);
     for (let columnRow of [[activeTetromino.column1, activeTetromino.row1], [activeTetromino.column2, activeTetromino.row2], [activeTetromino.column3, activeTetromino.row3], [activeTetromino.column4, activeTetromino.row4]]) {
       rect(columnRow[0] * (tetrisBoards.get("tetrisGame0").x2 - tetrisBoards.get("tetrisGame0").x1)/columnLines + tetrisBoards.get("tetrisGame0").x1,
@@ -892,7 +1001,7 @@ function updatePosition() {
   if ((timer - lastUpdate >= (0.8 - (level - 1) * 0.007)**(level - 1) * 1000 || softDrop && timer - lastUpdate >= softDropSpeed) && hardDrop !== "movePiece") {
     moveActiveDownSlowly();
   }
-  else if (hardDrop === "movePiece") {
+  if (hardDrop === "movePiece") {
     let spacesToDrop = 0;
     while (activeTetromino.row1 + spacesToDrop < rowLines &&
       activeTetromino.row2 + spacesToDrop < rowLines &&

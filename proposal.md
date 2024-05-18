@@ -19,4 +19,4 @@ I plan to finish and add to my version of Tetris that I made for project 2.
 - Ghost piece (where the piece will end up if a hard drop is performed),
 - Way better graphics,
 - Animations,
-- Other game modes (including, multiplayer, vs. AI, and sending garbage to other game boards upon line clearage, for example).
+- Other game modes (including, multiplayer (local and maybe p5party?), vs. AI, and sending garbage to other game boards upon line clearage, for example).
