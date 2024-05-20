@@ -116,11 +116,13 @@ class TetrisBoard {
       textSize(height/667 * 30);
     }
     
-    text("NEXT", this.x2 + width/20, this.y1);
+    text("NEXT", this.x2 + width/15, this.y1);
   }
 
   updateNextPiece() {
     this.minos = [];
+    let currentHeight = 1;
+    let textHeight = this.y1;
     for (let bagIndex = 0; bagIndex < 7; bagIndex++) {
       if (whatIsInTheBag(bagIndex) === "swap") {
         textAlign(CENTER, TOP);
@@ -134,14 +136,31 @@ class TetrisBoard {
           textSize(height/667 * 30);
         }
     
-        text("SWAP", this.x1 + width/20, this.y1 + 2.5*height*bagIndex/rowLines);
+        text("SWAP", this.x1 + width/15, textHeight);
       }
 
       else {
         for (let minoNumber = 1; minoNumber <= 4; minoNumber++) {
-          eval(`this.minos.push(new Mino(whatIsInTheBag(bagIndex).row${minoNumber} + 1 + 2.5 * bagIndex,
-          whatIsInTheBag(bagIndex).column${minoNumber} - 3, whatIsInTheBag(bagIndex).color))`);
+          if (whatIsInTheBag(bagIndex).color === "cyan" || whatIsInTheBag(bagIndex).color === "yellow") {
+            eval(`this.minos.push(new Mino(whatIsInTheBag(bagIndex).row${minoNumber} + ${currentHeight},
+            whatIsInTheBag(bagIndex).column${minoNumber} - 3, whatIsInTheBag(bagIndex).color))`);
+          }
+
+          else {
+            eval(`this.minos.push(new Mino(whatIsInTheBag(bagIndex).row${minoNumber} + ${currentHeight},
+            whatIsInTheBag(bagIndex).column${minoNumber} - 2.5, whatIsInTheBag(bagIndex).color))`);
+          }
         }
+      }
+
+      if (whatIsInTheBag(bagIndex) === "swap" || whatIsInTheBag(bagIndex).color === "cyan") {
+        currentHeight += 1.5;
+        textHeight += 1.5*height/rowLines;
+      }
+
+      else {
+        currentHeight += 2.5;
+        textHeight += 2.5*height/rowLines;
       }
     }
   }
