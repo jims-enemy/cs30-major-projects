@@ -107,7 +107,7 @@ class TetrisBoard {
   drawUI() {
     textAlign(CENTER, TOP);
     fill("white");
-    if (width/80 * 3 < height/667 * 30) {
+    if (width/80 * 3 < height/667 * 30) { // resize this at some point properly
       textSize(width/80 * 3 * nextPieceScale);
     }
 
@@ -115,11 +115,30 @@ class TetrisBoard {
       textSize(height/667 * 30 * nextPieceScale);
     }
     
-    text("NEXT", (this.x2 + width/10) * nextPieceScale, this.y1 * nextPieceScale);
+    text("NEXT", this.x2 + width/25 * nextPieceScale, this.y1 * nextPieceScale);
 
 
-    text("HOLD", (this.x2 + width/10) * nextPieceScale, (this.y1 + height/rowLines * 18) * nextPieceScale);
+    text("HOLD", this.x2 + width/25 * nextPieceScale, (this.y2 - height/rowLines * 2) * nextPieceScale);
+    
+    if (width/1280 * 27 * (nextPieceScale + 3/20) < height/667 * 30) {
+      textSize(width/1280 * 27 * (nextPieceScale + 3/20));
+    }
 
+    else {
+      textSize(height/667 * 30 * nextPieceScale);
+    }
+    
+    text("SCORE", this.x2 + width/25 * nextPieceScale, (this.y2 + height/rowLines) * nextPieceScale);
+
+    if (width/80 * 3/(4 - score.length + 1) < height/667 * 30) { // resize this at some point properly
+      textSize(width/80 * 3(4 - score.length + 1) * nextPieceScale);
+    }
+
+    else {
+      textSize(height/667 * 30 * nextPieceScale);
+    }
+
+    text(score, this.x2 + width/25 * nextPieceScale, (this.y2 + 2 * height/rowLines) * nextPieceScale);
   }
 
   updateNextPiece() {
@@ -141,7 +160,7 @@ class TetrisBoard {
           textSize(height/667 * 30 * nextPieceScale);
         }
     
-        text("SWAP", (this.x1 + width/10) * nextPieceScale, textHeight * nextPieceScale);
+        text("SWAP", this.x1 + width/25 * nextPieceScale, textHeight * nextPieceScale);
       }
 
       else {
@@ -230,7 +249,7 @@ let leftTimeStartedHeld = 0;
 let didLeftDAS = false;
 let rightTimeStartedHeld = 0;
 let didRightDAS = false;
-let nextPieceScale = 17/18;
+let nextPieceScale = 17/20;
 
 const SWAP = 1;
 const I = 2;
@@ -414,7 +433,8 @@ function setup() {
   }
 
   // Sets up the coordinates for the next piece board.
-  tetrisBoards.set("nextPiece", new TetrisBoard(width/3 * 2, height/20, width * nextPieceScale, height/360 * 357));
+  tetrisBoards.set("nextPiece", new TetrisBoard(width/3 * 2, height/rowLines, width * nextPieceScale,
+    height/rowLines * (rowLines + 1) * nextPieceScale));
 
   fillBag();
 }
@@ -427,7 +447,7 @@ function draw() {
     tetrisBoards.get(`tetrisGame${gameNumber}`).display(gameNumber, true);
   }
 
-  tetrisBoards.get("nextPiece").display();
+  tetrisBoards.get("nextPiece").display(1, true);
 
   if (gamemode === "PT") {
     timer = millis() - timePaused;
@@ -467,7 +487,8 @@ function windowResized() {
   }
 
   // Sets up the coordinates for the next piece board.
-  tetrisBoards.set("nextPiece", new TetrisBoard(width/3 * 2, height/20, width * nextPieceScale, height/360 * 357), tetrisBoards.get("nextPiece").minos);
+  tetrisBoards.set("nextPiece", new TetrisBoard(width/3 * 2, height/rowLines,
+    width * nextPieceScale, height/rowLines * (rowLines + 1) * nextPieceScale, tetrisBoards.get("nextPiece").minos));
 }
 
 function swap() {
@@ -957,29 +978,35 @@ function clearLines() {
 }
 
 function scoreClearLines(linesCleared) {
+  let multiplier = 1;
+
+  if (difficultClear) {
+    let multiplier = 1.5;
+  }
+
   if (linesCleared === 1) {
-    scoreClearTSpins(800, 200, 100);
+    scoreClearTSpins(800, 200, 100, multiplier);
     if (tetrisBoards.get("tetrisGame0").minos.length === 0) {
       score += 800 * level;
     }
   }
   
   else if (linesCleared === 2) {
-    scoreClearTSpins(1200, 400, 300);
+    scoreClearTSpins(1200, 400, 300, multiplier);
     if (tetrisBoards.get("tetrisGame0").minos.length === 0) {
       score += 1200 * level;
     }
   }
 
   else if (linesCleared === 3) {
-    scoreClearTSpins(1600, 0, 500);
+    scoreClearTSpins(1600, 0, 500, multiplier);
     if (tetrisBoards.get("tetrisGame0").minos.length === 0) {
       score += 1800 * level;
     }
   }
 
   if (linesCleared === 4) {
-    score += 800 * level * (1.5 * difficultClear);
+    score += 800 * level * multiplier;
     difficultClear = true;
     if (tetrisBoards.get("tetrisGame0").minos.length === 0) {
       score += (2000 + 1200 * justTetrised) * level;
@@ -995,15 +1022,15 @@ function scoreClearLines(linesCleared) {
   score += 50 * comboCounter * level;
 }
 
-function scoreClearTSpins(tSpinScore, miniScore, defaultScore) {
+function scoreClearTSpins(tSpinScore, miniScore, defaultScore, multiplier) {
   if (activeTetromino.color === "purple" && (tSpin() || miniTSpin())) {
     if (tSpin()) {
-      score += tSpinScore * level * (1.5 * difficultClear);
+      score += tSpinScore * level * multiplier;
       difficultClear = true;
     }
 
     else if (miniTSpin()) {
-      score += miniScore * level * (1.5 * difficultClear);
+      score += miniScore * level * multiplier;
       difficultClear = true;
     }
   }
