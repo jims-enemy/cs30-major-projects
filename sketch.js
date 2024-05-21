@@ -107,36 +107,41 @@ class TetrisBoard {
   drawUI() {
     textAlign(CENTER, TOP);
     fill("white");
-    
     if (width/80 * 3 < height/667 * 30) {
-      textSize(width/80 * 3);
+      textSize(width/80 * 3 * nextPieceScale);
     }
 
     else {
-      textSize(height/667 * 30);
+      textSize(height/667 * 30 * nextPieceScale);
     }
     
-    text("NEXT", this.x2 + width/15, this.y1);
+    text("NEXT", (this.x2 + width/10) * nextPieceScale, this.y1 * nextPieceScale);
+
+
+    text("HOLD", (this.x2 + width/10) * nextPieceScale, (this.y1 + height/rowLines * 18) * nextPieceScale);
+
   }
 
   updateNextPiece() {
     this.minos = [];
     let currentHeight = 1;
     let textHeight = this.y1;
+    let rowOffset;
+    let columnOffset;
     for (let bagIndex = 0; bagIndex < 7; bagIndex++) {
       if (whatIsInTheBag(bagIndex) === "swap") {
         textAlign(CENTER, TOP);
         fill("white");
     
         if (width/80 * 3 < height/667 * 30) {
-          textSize(width/80 * 3);
-        }
-
-        else {
-          textSize(height/667 * 30);
+          textSize(width/80 * 3 * nextPieceScale);
         }
     
-        text("SWAP", this.x1 + width/15, textHeight);
+        else {
+          textSize(height/667 * 30 * nextPieceScale);
+        }
+    
+        text("SWAP", (this.x1 + width/10) * nextPieceScale, textHeight * nextPieceScale);
       }
 
       else {
@@ -162,6 +167,25 @@ class TetrisBoard {
         currentHeight += 2.5;
         textHeight += 2.5*height/rowLines;
       }
+    }
+     
+    if (heldPiece === I) {
+      rowOffset = 19.5;
+    }
+    else if (heldPiece) {
+      rowOffset = 19;
+    }
+
+    if (heldPiece === I || heldPiece === O) {
+      columnOffset = -3;
+    }
+
+    else {
+      columnOffset = -2.5;
+    }
+
+    for (let minoNumber = 1; minoNumber <= 4; minoNumber++) {
+      eval(`this.minos.push(new Mino(whatIsInTheBag(0, true).row${minoNumber} + rowOffset, whatIsInTheBag(0, true).column${minoNumber} + columnOffset, whatIsInTheBag(0, true).color))`);
     }
   }
 }
@@ -206,6 +230,7 @@ let leftTimeStartedHeld = 0;
 let didLeftDAS = false;
 let rightTimeStartedHeld = 0;
 let didRightDAS = false;
+let nextPieceScale = 17/18;
 
 const SWAP = 1;
 const I = 2;
@@ -389,7 +414,7 @@ function setup() {
   }
 
   // Sets up the coordinates for the next piece board.
-  tetrisBoards.set("nextPiece", new TetrisBoard(width/3 * 2, height/20, width, height/20 * 21));
+  tetrisBoards.set("nextPiece", new TetrisBoard(width/3 * 2, height/20, width * nextPieceScale, height/360 * 357));
 
   fillBag();
 }
@@ -442,8 +467,7 @@ function windowResized() {
   }
 
   // Sets up the coordinates for the next piece board.
-  tetrisBoards.set("nextPiece", new TetrisBoard(width/3 * 2, height/20, width,
-    height/20 * 21, tetrisBoards.get("nextPiece").minos));
+  tetrisBoards.set("nextPiece", new TetrisBoard(width/3 * 2, height/20, width * nextPieceScale, height/360 * 357), tetrisBoards.get("nextPiece").minos);
 }
 
 function swap() {
@@ -513,32 +537,32 @@ function grabNextFromBag() {
   bag.shift();
 }
 
-function whatIsInTheBag(currentIndex) {
-  if (bag[currentIndex] === SWAP) {
+function whatIsInTheBag(currentIndex, wantHeldPiece) {
+  if (bag[currentIndex] === SWAP && !wantHeldPiece || heldPiece === SWAP && wantHeldPiece) {
     return "swap";
   }
 
-  else if (bag[currentIndex] === I) {
+  else if (bag[currentIndex] === I && !wantHeldPiece || heldPiece === I && wantHeldPiece) {
     return {...ACTIVE_MINO_I};
   }
 
-  else if (bag[currentIndex] === J) {
+  else if (bag[currentIndex] === J && !wantHeldPiece || heldPiece === J && wantHeldPiece) {
     return {...ACTIVE_MINO_J};
   }
 
-  else if (bag[currentIndex] === L) {
+  else if (bag[currentIndex] === L && !wantHeldPiece || heldPiece === L && wantHeldPiece) {
     return {...ACTIVE_MINO_L};
   }
 
-  else if (bag[currentIndex] === O) {
+  else if (bag[currentIndex] === O && !wantHeldPiece || heldPiece === O && wantHeldPiece) {
     return {...ACTIVE_MINO_O};
   }
 
-  else if (bag[currentIndex] === S) {
+  else if (bag[currentIndex] === S && !wantHeldPiece || heldPiece === S && wantHeldPiece) {
     return {...ACTIVE_MINO_S};
   }
 
-  else if (bag[currentIndex] === Z) {
+  else if (bag[currentIndex] === Z && !wantHeldPiece || heldPiece === Z && wantHeldPiece) {
     return {...ACTIVE_MINO_Z};
   }
 
