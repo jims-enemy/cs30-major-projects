@@ -107,7 +107,7 @@ class TetrisBoard {
   drawUI() {
     textAlign(CENTER, TOP);
     fill("white");
-    if (width/80 * 3 < height/667 * 30) { // resize this at some point properly
+    if (width/80 * 3 < height/667 * 30) {
       textSize(width/80 * 3 * nextPieceScale);
     }
 
@@ -115,10 +115,10 @@ class TetrisBoard {
       textSize(height/667 * 30 * nextPieceScale);
     }
     
-    text("NEXT", this.x2 + width/25 * nextPieceScale, this.y1 * nextPieceScale);
+    text("NEXT", this.x2 + width/(3*rowLines) * 4 * nextPieceScale, this.y1 * nextPieceScale);
 
 
-    text("HOLD", this.x2 + width/25 * nextPieceScale, (this.y2 - height/rowLines * 2) * nextPieceScale);
+    text("HOLD", this.x2 + width/(3*rowLines) * 4 * nextPieceScale, (this.y2 - height/rowLines * 2) * nextPieceScale);
     
     if (width/1280 * 27 * (nextPieceScale + 3/20) < height/667 * 30) {
       textSize(width/1280 * 27 * (nextPieceScale + 3/20));
@@ -128,9 +128,11 @@ class TetrisBoard {
       textSize(height/667 * 30 * nextPieceScale);
     }
     
-    text("SCORE", this.x2 + width/25 * nextPieceScale, (this.y2 + height/rowLines) * nextPieceScale);
+    text("SCORE", this.x2 + width/(3*rowLines) * 4 * nextPieceScale, (this.y2 + height/rowLines) * nextPieceScale);
+    text("LEVEL", this.x2 + width/(3*rowLines) * 4 * nextPieceScale, (this.y2 + height/rowLines * 3) * nextPieceScale);
+    text("LINES", this.x2 + width/(3*rowLines) * 4 * nextPieceScale, (this.y2 + height/rowLines * 5) * nextPieceScale);
 
-    if (width/80 * 3/(4 - score.length + 1) < height/667 * 30) { // resize this at some point properly
+    if (width/80 * 3/(4 - score.length + 1) < height/667 * 30) {
       textSize(width/80 * 3(4 - score.length + 1) * nextPieceScale);
     }
 
@@ -138,7 +140,28 @@ class TetrisBoard {
       textSize(height/667 * 30 * nextPieceScale);
     }
 
-    text(score, this.x2 + width/25 * nextPieceScale, (this.y2 + 2 * height/rowLines) * nextPieceScale);
+    text(score, this.x2 + width/(3*rowLines) * 4 * nextPieceScale, (this.y2 + 2 * height/rowLines) * nextPieceScale);
+
+    if (width/80 * 3/(4 - level.length + 1) < height/667 * 30) {
+      textSize(width/80 * 3(4 - level.length + 1) * nextPieceScale);
+    }
+
+    else {
+      textSize(height/667 * 30 * nextPieceScale);
+    }
+
+    text(level, this.x2 + width/(3*rowLines) * 4 * nextPieceScale, (this.y2 + 4 * height/rowLines) * nextPieceScale);
+
+    if (width/80 * 3/(4 - totalLinesCleared.length + 1) < height/667 * 30) {
+      textSize(width/80 * 3(4 - totalLinesCleared.length + 1) * nextPieceScale);
+    }
+
+    else {
+      textSize(height/667 * 30 * nextPieceScale);
+    }
+
+    text(totalLinesCleared, this.x2 + width/(3*rowLines) * 4 * nextPieceScale,
+      (this.y2 + 6 * height/rowLines) * nextPieceScale);
   }
 
   updateNextPiece() {
@@ -160,7 +183,7 @@ class TetrisBoard {
           textSize(height/667 * 30 * nextPieceScale);
         }
     
-        text("SWAP", this.x1 + width/25 * nextPieceScale, textHeight * nextPieceScale);
+        text("SWAP", this.x1 + width/(3*rowLines) * 4 * nextPieceScale, textHeight * nextPieceScale);
       }
 
       else {
@@ -249,7 +272,7 @@ let leftTimeStartedHeld = 0;
 let didLeftDAS = false;
 let rightTimeStartedHeld = 0;
 let didRightDAS = false;
-let nextPieceScale = 17/20;
+let nextPieceScale = 1377/1900;
 
 const SWAP = 1;
 const I = 2;
@@ -433,8 +456,8 @@ function setup() {
   }
 
   // Sets up the coordinates for the next piece board.
-  tetrisBoards.set("nextPiece", new TetrisBoard(width/3 * 2, height/rowLines, width * nextPieceScale,
-    height/rowLines * (rowLines + 1) * nextPieceScale));
+  tetrisBoards.set("nextPiece", new TetrisBoard(width/3 * 2, height/rowLines,
+    width/3 * 2 + width/3 * nextPieceScale, height/rowLines * (rowLines + 1) * nextPieceScale));
 
   fillBag();
 }
@@ -447,7 +470,7 @@ function draw() {
     tetrisBoards.get(`tetrisGame${gameNumber}`).display(gameNumber, true);
   }
 
-  tetrisBoards.get("nextPiece").display(1, true);
+  tetrisBoards.get("nextPiece").display();
 
   if (gamemode === "PT") {
     timer = millis() - timePaused;
@@ -488,7 +511,8 @@ function windowResized() {
 
   // Sets up the coordinates for the next piece board.
   tetrisBoards.set("nextPiece", new TetrisBoard(width/3 * 2, height/rowLines,
-    width * nextPieceScale, height/rowLines * (rowLines + 1) * nextPieceScale, tetrisBoards.get("nextPiece").minos));
+    width/3 * 2 + width/3 * nextPieceScale,
+    height/rowLines * (rowLines + 1) * nextPieceScale, tetrisBoards.get("nextPiece").minos));
 }
 
 function swap() {
