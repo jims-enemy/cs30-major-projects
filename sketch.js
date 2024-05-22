@@ -107,59 +107,24 @@ class TetrisBoard {
   drawUI() {
     textAlign(CENTER, TOP);
     fill("white");
-    if (width/80 * 3 < height/667 * 30) {
-      textSize(width/80 * 3 * nextPieceScale);
-    }
 
-    else {
-      textSize(height/667 * 30 * nextPieceScale);
-    }
-    
+    this.resizeText(width/80 * 3 * nextPieceScale);
     text("NEXT", this.x2 + width/(3*rowLines) * 4 * nextPieceScale, this.y1 * nextPieceScale);
-
-
     text("HOLD", this.x2 + width/(3*rowLines) * 4 * nextPieceScale, (this.y2 - height/rowLines * 2) * nextPieceScale);
     
-    if (width/1280 * 27 * (nextPieceScale + 3/20) < height/667 * 30) {
-      textSize(width/1280 * 27 * (nextPieceScale + 3/20));
-    }
-
-    else {
-      textSize(height/667 * 30 * nextPieceScale);
-    }
+    this.resizeText(width/1280 * 27 * (nextPieceScale + 3/20));
     
     text("SCORE", this.x2 + width/(3*rowLines) * 4 * nextPieceScale, (this.y2 + height/rowLines) * nextPieceScale);
     text("LEVEL", this.x2 + width/(3*rowLines) * 4 * nextPieceScale, (this.y2 + height/rowLines * 3) * nextPieceScale);
     text("LINES", this.x2 + width/(3*rowLines) * 4 * nextPieceScale, (this.y2 + height/rowLines * 5) * nextPieceScale);
 
-    if (width/80 * 3/(4 - score.length + 1) < height/667 * 30) {
-      textSize(width/80 * 3(4 - score.length + 1) * nextPieceScale);
-    }
-
-    else {
-      textSize(height/667 * 30 * nextPieceScale);
-    }
-
+    this.resizeText(width/80 * 3/(4 - score.length + 1));
     text(score, this.x2 + width/(3*rowLines) * 4 * nextPieceScale, (this.y2 + 2 * height/rowLines) * nextPieceScale);
 
-    if (width/80 * 3/(4 - level.length + 1) < height/667 * 30) {
-      textSize(width/80 * 3(4 - level.length + 1) * nextPieceScale);
-    }
-
-    else {
-      textSize(height/667 * 30 * nextPieceScale);
-    }
-
+    this.resizeText(width/80 * 3/(4 - level.length + 1));
     text(level, this.x2 + width/(3*rowLines) * 4 * nextPieceScale, (this.y2 + 4 * height/rowLines) * nextPieceScale);
 
-    if (width/80 * 3/(4 - totalLinesCleared.length + 1) < height/667 * 30) {
-      textSize(width/80 * 3(4 - totalLinesCleared.length + 1) * nextPieceScale);
-    }
-
-    else {
-      textSize(height/667 * 30 * nextPieceScale);
-    }
-
+    this.resizeText(width/80 * 3/(4 - totalLinesCleared.length + 1));
     text(totalLinesCleared, this.x2 + width/(3*rowLines) * 4 * nextPieceScale,
       (this.y2 + 6 * height/rowLines) * nextPieceScale);
   }
@@ -175,13 +140,7 @@ class TetrisBoard {
         textAlign(CENTER, TOP);
         fill("white");
     
-        if (width/80 * 3 < height/667 * 30) {
-          textSize(width/80 * 3 * nextPieceScale);
-        }
-    
-        else {
-          textSize(height/667 * 30 * nextPieceScale);
-        }
+        this.resizeText(width/80 * 3 * nextPieceScale);
     
         text("SWAP", this.x1 + width/(3*rowLines) * 4 * nextPieceScale, textHeight * nextPieceScale);
       }
@@ -228,6 +187,16 @@ class TetrisBoard {
 
     for (let minoNumber = 1; minoNumber <= 4; minoNumber++) {
       eval(`this.minos.push(new Mino(whatIsInTheBag(0, true).row${minoNumber} + rowOffset, whatIsInTheBag(0, true).column${minoNumber} + columnOffset, whatIsInTheBag(0, true).color))`);
+    }
+  }
+
+  resizeText(newWidth) {
+    if (newWidth < height/667 * 30 * nextPieceScale) {
+      textSize(newWidth);
+    }
+
+    else {
+      textSize(height/667 * 30 * nextPieceScale);
     }
   }
 }
