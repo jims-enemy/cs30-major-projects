@@ -1,206 +1,3 @@
-class Mino {
-  constructor(row, column, color) {
-    this.row = row;
-    this.column = column;
-    this.color = color;
-  }
-
-  display(x1, y1, x2, y2) {
-    fill(this.color);
-    rect(this.column * (x2 - x1)/columnLines + x1, this.row * (y2 - y1)/rowLines + y1,
-      (x2 - x1)/columnLines, (y2 - y1)/rowLines);
-  }
-
-  lineCleared(rowCleared, thisIndex) {
-    if (this.row === rowCleared) {
-      tetrisBoards.get("tetrisGame0").minos.splice(thisIndex, 1);
-    }
-
-    else if (this.row < rowCleared) {
-      this.row++;
-    }
-  }
-
-  neighborT() {
-    const neighbors = (rowOrColumn, change, secondOperator) => 
-      eval(`this.${rowOrColumn} + ${change} === activeTetromino.${rowOrColumn}2 ||
-    this.${rowOrColumn} ${secondOperator} ${change} === activeTetromino.${rowOrColumn}2`);
-
-    if (neighbors("row", 0, "-") && neighbors("column", 1, "-") && isRotation(2, 2) ||
-    neighbors("column", 0, "-") && neighbors("row", 1, "-") && isRotation(3, 2)) {
-      activeTetromino.frontCornerNeighbors++;
-    }
-
-    else if (neighbors("row", 2, "+") && neighbors("column", 1, "-") && isRotation(2, 0) || 
-    neighbors("row", -2, "+") && neighbors("column", 1, "-") && isRotation(0, 0) ||
-  neighbors("column", -2, "+") && neighbors("row", 1, "-") && isRotation(3, 0) || 
-  neighbors("column", 2, "+") && neighbors("row", 1, "-") && isRotation(1, 0)) {
-      activeTetromino.rearCornerNeighbors++;
-    }
-  }
-
-  collidesWithActive(shift) {
-    for(let minoNumber of [1, 2, 3, 4]) {
-      if (eval(`this.column === activeTetromino.column${minoNumber} + ${shift}
-      && this.row === activeTetromino.row${minoNumber}`)) {
-        return true;
-      }
-    }
-    return false;
-  }
-}
-class TetrisBoard {
-  constructor(x1, y1, x2, y2, minos) {
-    this.x1 = x1;
-    this.y1 = y1;
-    this.x2 = x2;
-    this.y2 = y2;
-    if (minos) {
-      this.minos = minos;
-    }
-    else {
-      this.minos = [];
-    }
-  }
-  
-  display(gameNumber, drawGrid) {
-    stroke("white");
-
-    if (drawGrid) {
-    // Draws the columns.
-      for(let currentColumn = 0; currentColumn < columnLines + 1; currentColumn++) {
-        let xValue = (this.x2 - this.x1)/columnLines * currentColumn + this.x1;
-        line(xValue, this.y1, xValue, this.y2);
-      }
-
-      // Draws the rows.
-      for(let currentRow = 0; currentRow < rowLines + 1; currentRow++) {
-        let yValue =  (this.y2 - this.y1)/rowLines * currentRow + this.y1;
-        line(this.x1, yValue, this.x2, yValue);
-      }
-    }
-
-    // Draws the minos.
-    for(let currentMino of this.minos) {
-      currentMino.display(this.x1, this.y1, this.x2, this.y2);
-    }
-
-    if (gameNumber === 0) {
-      this.drawUI();
-    }
-  }
-
-  toggleCell() {
-    let x = Math.floor(mouseX/(width/(columnLines*3))) - columnLines;
-    let y = Math.floor(mouseY/(height/rowLines));
-
-    for (let currentMino = 0; currentMino < this.minos.length; currentMino++) {
-      if (this.minos[currentMino].column === x && this.minos[currentMino].row === y) {
-        this.minos.splice(currentMino, 1);
-        return;
-      }
-    }
-
-    this.minos.push(new Mino(y, x, "Grey"));
-  }
-
-  drawUI() {
-    textAlign(CENTER, TOP);
-    fill("white");
-
-    this.resizeText(width/80 * 3 * nextPieceScale);
-    text("NEXT", this.x2 + width/(3*rowLines) * 4 * nextPieceScale, this.y1 * nextPieceScale);
-    text("HOLD", this.x2 + width/(3*rowLines) * 4 * nextPieceScale, (this.y2 - height/rowLines * 2) * nextPieceScale);
-    
-    this.resizeText(width/1280 * 27 * (nextPieceScale + 3/20));
-    
-    text("SCORE", this.x2 + width/(3*rowLines) * 4 * nextPieceScale, (this.y2 + height/rowLines) * nextPieceScale);
-    text("LEVEL", this.x2 + width/(3*rowLines) * 4 * nextPieceScale, (this.y2 + height/rowLines * 3) * nextPieceScale);
-    text("LINES", this.x2 + width/(3*rowLines) * 4 * nextPieceScale, (this.y2 + height/rowLines * 5) * nextPieceScale);
-
-    this.resizeText(width/80 * 3/(4 - score.length + 1));
-    text(score, this.x2 + width/(3*rowLines) * 4 * nextPieceScale, (this.y2 + 2 * height/rowLines) * nextPieceScale);
-
-    this.resizeText(width/80 * 3/(4 - level.length + 1));
-    text(level, this.x2 + width/(3*rowLines) * 4 * nextPieceScale, (this.y2 + 4 * height/rowLines) * nextPieceScale);
-
-    this.resizeText(width/80 * 3/(4 - totalLinesCleared.length + 1));
-    text(totalLinesCleared, this.x2 + width/(3*rowLines) * 4 * nextPieceScale,
-      (this.y2 + 6 * height/rowLines) * nextPieceScale);
-  }
-
-  updateNextPiece() {
-    this.minos = [];
-    let currentHeight = 1;
-    let textHeight = this.y1;
-    let rowOffset;
-    let columnOffset;
-    for (let bagIndex = 0; bagIndex < 7; bagIndex++) {
-      if (whatIsInTheBag(bagIndex) === "swap") {
-        textAlign(CENTER, TOP);
-        fill("white");
-    
-        this.resizeText(width/80 * 3 * nextPieceScale);
-    
-        text("SWAP", this.x1 + width/(3*rowLines) * 4 * nextPieceScale, textHeight * nextPieceScale);
-      }
-
-      else {
-        for (let minoNumber = 1; minoNumber <= 4; minoNumber++) {
-          if (whatIsInTheBag(bagIndex).color === "cyan" || whatIsInTheBag(bagIndex).color === "yellow") {
-            eval(`this.minos.push(new Mino(whatIsInTheBag(bagIndex).row${minoNumber} + ${currentHeight},
-            whatIsInTheBag(bagIndex).column${minoNumber} - 3, whatIsInTheBag(bagIndex).color))`);
-          }
-
-          else {
-            eval(`this.minos.push(new Mino(whatIsInTheBag(bagIndex).row${minoNumber} + ${currentHeight},
-            whatIsInTheBag(bagIndex).column${minoNumber} - 2.5, whatIsInTheBag(bagIndex).color))`);
-          }
-        }
-      }
-
-      if (whatIsInTheBag(bagIndex) === "swap" || whatIsInTheBag(bagIndex).color === "cyan") {
-        currentHeight += 1.5;
-        textHeight += 1.5*height/rowLines;
-      }
-
-      else {
-        currentHeight += 2.5;
-        textHeight += 2.5*height/rowLines;
-      }
-    }
-     
-    if (heldPiece === I) {
-      rowOffset = 19.5;
-    }
-    else if (heldPiece) {
-      rowOffset = 19;
-    }
-
-    if (heldPiece === I || heldPiece === O) {
-      columnOffset = -3;
-    }
-
-    else {
-      columnOffset = -2.5;
-    }
-
-    for (let minoNumber = 1; minoNumber <= 4; minoNumber++) {
-      eval(`this.minos.push(new Mino(whatIsInTheBag(0, true).row${minoNumber} + rowOffset, whatIsInTheBag(0, true).column${minoNumber} + columnOffset, whatIsInTheBag(0, true).color))`);
-    }
-  }
-
-  resizeText(newWidth) {
-    if (newWidth < height/667 * 30 * nextPieceScale) {
-      textSize(newWidth);
-    }
-
-    else {
-      textSize(height/667 * 30 * nextPieceScale);
-    }
-  }
-}
-
 let columnLines = 10;
 let rowLines = 20;
 let tetrisBoards = new Map();
@@ -393,7 +190,264 @@ const ACTIVE_MINO_SWAP = {color: "black",
   row4: rowLines**2,
 };
 
-const isRotation = (rotationToCheck, differentRotation) => activeTetromino.rotation === rotationToCheck ||
+/**
+ * Represents a single mino on any board.
+ */
+class Mino {
+
+  /**
+   * Creates a new mino. 
+   * @param {number} row - The row to create a mino on.
+   * @param {number} column - The column to create a mino on.
+   * @param {string} color - The P5JS built-in color of the mino.
+  */
+  constructor(row, column, color) {
+    this.row = row;
+    this.column = column;
+    this.color = color;
+  }
+
+  /**
+   * Draws this mino.
+   * @param {number} x1 - The lowest x value on the board. 
+   * @param {number} y1 - The lowest y value on the board.
+   * @param {number} x2 - The highest x value on the board.
+   * @param {number} y2 - The highest y value on the board.
+   */
+  display(x1, y1, x2, y2) {
+    fill(this.color);
+    rect(this.column * (x2 - x1)/columnLines + x1, this.row * (y2 - y1)/rowLines + y1,
+      (x2 - x1)/columnLines, (y2 - y1)/rowLines);
+  }
+
+  /**
+   * Removes this mino if it's row is cleared, and moves it down if it's row is above.
+   * @param {number} rowCleared - The row that has been cleared.
+   * @param {number} thisIndex - The index of the current mino.
+   */
+  lineCleared(rowCleared, thisIndex) {
+
+    // If this row is cleared, remove this mino.
+    if (this.row === rowCleared) {
+      tetrisBoards.get("tetrisGame0").minos.splice(thisIndex, 1);
+    }
+
+    // If a row below this mino has been cleared, move it down.
+    else if (this.row < rowCleared) {
+      this.row++;
+    }
+  }
+
+  /**
+   * Checks if this mino is a neighbor of the front corner or rear corners of the active T tetromino.
+   */
+  neighborT() {
+
+    /**
+     * 
+     * @param {*} rowOrColumn 
+     * @param {*} change 
+     * @param {*} secondOperator 
+     * @returns 
+     */
+    const neighbors = (rowOrColumn, change = 0, secondOperator = "-",) => 
+      eval(`this.${rowOrColumn} + ${change} === activeTetromino.${rowOrColumn}2 ||
+    this.${rowOrColumn} ${secondOperator} ${change} === activeTetromino.${rowOrColumn}2`);
+
+    if (neighbors("row") && neighbors("column", 1) && isRotation(2, 2) ||
+    neighbors("column") && neighbors("row", 1) && isRotation(3, 2)) {
+      activeTetromino.frontCornerNeighbors++;
+    }
+
+    else if (neighbors("row", 2, "+") && neighbors("column", 1) && isRotation(2) || 
+    neighbors("row", -2, "+") && neighbors("column", 1) && isRotation(0) ||
+  neighbors("column", -2, "+") && neighbors("row", 1) && isRotation(3) || 
+  neighbors("column", 2, "+") && neighbors("row", 1) && isRotation(1)) {
+      activeTetromino.rearCornerNeighbors++;
+    }
+  }
+
+  /**
+   * Checks if this mino collides with the active tetromino after moving across columns.
+   * @param {number} shift - How many columns the active tetromino is trying to move.
+   * @returns {boolean} If it is safe to move the tetromino.
+   */
+  collidesWithActive(shift) {
+    for(let minoNumber of [1, 2, 3, 4]) {
+      if (eval(`this.column === activeTetromino.column${minoNumber} + ${shift}
+      && this.row === activeTetromino.row${minoNumber}`)) {
+        return true;
+      }
+    }
+    return false;
+  }
+}
+
+/**
+ * Either represents a game board or the board used for the UI.
+ */
+class TetrisBoard {
+
+  /**
+   * Creates a new tetris board.
+   * @param {number} x1 - The minimum value for x on this board.
+   * @param {number} y1 - The minimum value for y on this board.
+   * @param {number} x2 - The maximum value for x on this board.
+   * @param {number} y2 - The maximum value for y on this board.
+   * @param {Array} [minos] An array holding all the minos for this board (optional, defaults to an empty array).
+   */
+  constructor(x1, y1, x2, y2, minos = []) {
+    this.x1 = x1;
+    this.y1 = y1;
+    this.x2 = x2;
+    this.y2 = y2;
+    this.minos = minos;
+  }
+  
+  /**
+   * Draws this tetris board.
+   * @param {number} [gameNumber] This board's number, optional. 
+   * @param {boolean} [drawGrid] Whether or not to draw the board, defaults to true. 
+   */
+  display(gameNumber, drawGrid = true) {
+    stroke("white");
+
+    if (drawGrid) {
+    // Draws the columns.
+      for(let currentColumn = 0; currentColumn < columnLines + 1; currentColumn++) {
+        let xValue = (this.x2 - this.x1)/columnLines * currentColumn + this.x1;
+        line(xValue, this.y1, xValue, this.y2);
+      }
+
+      // Draws the rows.
+      for(let currentRow = 0; currentRow < rowLines + 1; currentRow++) {
+        let yValue =  (this.y2 - this.y1)/rowLines * currentRow + this.y1;
+        line(this.x1, yValue, this.x2, yValue);
+      }
+    }
+
+    // Draws the minos.
+    for(let currentMino of this.minos) {
+      currentMino.display(this.x1, this.y1, this.x2, this.y2);
+    }
+
+    if (gameNumber === 0) {
+      this.drawUI();
+    }
+  }
+
+  toggleCell() {
+    let x = Math.floor(mouseX/(width/(columnLines*3))) - columnLines;
+    let y = Math.floor(mouseY/(height/rowLines));
+
+    for (let currentMino = 0; currentMino < this.minos.length; currentMino++) {
+      if (this.minos[currentMino].column === x && this.minos[currentMino].row === y) {
+        this.minos.splice(currentMino, 1);
+        return;
+      }
+    }
+
+    this.minos.push(new Mino(y, x, "Grey"));
+  }
+
+  drawUI() {
+    textAlign(CENTER, TOP);
+    fill("white");
+
+    this.resizeText(width/80 * 3 * nextPieceScale);
+    text("NEXT", this.x2 + width/(3*rowLines) * 4 * nextPieceScale, this.y1 * nextPieceScale);
+    text("HOLD", this.x2 + width/(3*rowLines) * 4 * nextPieceScale, (this.y2 - height/rowLines * 2) * nextPieceScale);
+    
+    this.resizeText(width/1280 * 27 * (nextPieceScale + 3/20));
+    
+    text("SCORE", this.x2 + width/(3*rowLines) * 4 * nextPieceScale, (this.y2 + height/rowLines) * nextPieceScale);
+    text("LEVEL", this.x2 + width/(3*rowLines) * 4 * nextPieceScale, (this.y2 + height/rowLines * 3) * nextPieceScale);
+    text("LINES", this.x2 + width/(3*rowLines) * 4 * nextPieceScale, (this.y2 + height/rowLines * 5) * nextPieceScale);
+
+    this.resizeText(width/80 * 3/(4 - score.length + 1));
+    text(score, this.x2 + width/(3*rowLines) * 4 * nextPieceScale, (this.y2 + 2 * height/rowLines) * nextPieceScale);
+
+    this.resizeText(width/80 * 3/(4 - level.length + 1));
+    text(level, this.x2 + width/(3*rowLines) * 4 * nextPieceScale, (this.y2 + 4 * height/rowLines) * nextPieceScale);
+
+    this.resizeText(width/80 * 3/(4 - totalLinesCleared.length + 1));
+    text(totalLinesCleared, this.x2 + width/(3*rowLines) * 4 * nextPieceScale,
+      (this.y2 + 6 * height/rowLines) * nextPieceScale);
+  }
+
+  updateNextPiece() {
+    this.minos = [];
+    let currentHeight = 1;
+    let textHeight = this.y1;
+    let rowOffset;
+    let columnOffset;
+    for (let bagIndex = 0; bagIndex < 7; bagIndex++) {
+      if (whatIsInTheBag(bagIndex) === "swap") {
+        textAlign(CENTER, TOP);
+        fill("white");
+    
+        this.resizeText(width/80 * 3 * nextPieceScale);
+    
+        text("SWAP", this.x1 + width/(3*rowLines) * 4 * nextPieceScale, textHeight * nextPieceScale);
+      }
+
+      else {
+        for (let minoNumber = 1; minoNumber <= 4; minoNumber++) {
+          if (whatIsInTheBag(bagIndex).color === "cyan" || whatIsInTheBag(bagIndex).color === "yellow") {
+            eval(`this.minos.push(new Mino(whatIsInTheBag(bagIndex).row${minoNumber} + ${currentHeight},
+            whatIsInTheBag(bagIndex).column${minoNumber} - 3, whatIsInTheBag(bagIndex).color))`);
+          }
+
+          else {
+            eval(`this.minos.push(new Mino(whatIsInTheBag(bagIndex).row${minoNumber} + ${currentHeight},
+            whatIsInTheBag(bagIndex).column${minoNumber} - 2.5, whatIsInTheBag(bagIndex).color))`);
+          }
+        }
+      }
+
+      if (whatIsInTheBag(bagIndex) === "swap" || whatIsInTheBag(bagIndex).color === "cyan") {
+        currentHeight += 1.5;
+        textHeight += 1.5*height/rowLines;
+      }
+
+      else {
+        currentHeight += 2.5;
+        textHeight += 2.5*height/rowLines;
+      }
+    }
+     
+    if (heldPiece === I) {
+      rowOffset = 19.5;
+    }
+    else if (heldPiece) {
+      rowOffset = 19;
+    }
+
+    if (heldPiece === I || heldPiece === O) {
+      columnOffset = -3;
+    }
+
+    else {
+      columnOffset = -2.5;
+    }
+
+    for (let minoNumber = 1; minoNumber <= 4; minoNumber++) {
+      eval(`this.minos.push(new Mino(whatIsInTheBag(0, true).row${minoNumber} + rowOffset, whatIsInTheBag(0, true).column${minoNumber} + columnOffset, whatIsInTheBag(0, true).color))`);
+    }
+  }
+
+  resizeText(newWidth) {
+    if (newWidth < height/667 * 30 * nextPieceScale) {
+      textSize(newWidth);
+    }
+
+    else {
+      textSize(height/667 * 30 * nextPieceScale);
+    }
+  }
+}
+
+const isRotation = (rotationToCheck, differentRotation = 0) => activeTetromino.rotation === rotationToCheck ||
     activeTetromino.rotation === rotationToCheck - differentRotation;
 
 const miniTSpin = () => activeTetromino.frontCornerNeighbors === 1 && activeTetromino.rearCornerNeighbors >= 2;
@@ -436,10 +490,10 @@ function draw() {
   
   // Draws each game.
   for(let gameNumber = 0; gameNumber < games; gameNumber++) {
-    tetrisBoards.get(`tetrisGame${gameNumber}`).display(gameNumber, true);
+    tetrisBoards.get(`tetrisGame${gameNumber}`).display(gameNumber);
   }
 
-  tetrisBoards.get("nextPiece").display();
+  tetrisBoards.get("nextPiece").display({drawGrid: false});
 
   if (gamemode === "PT") {
     timer = millis() - timePaused;
