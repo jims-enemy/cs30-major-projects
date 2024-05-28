@@ -35,11 +35,15 @@ let entryDelay = 100;
 let entryDelayStart = 0;
 let totalLinesCleared = 0;
 let leftTimeStartedHeld = 0;
-let didLeftDAS = false;
+let leftDidDAS = false;
 let rightTimeStartedHeld = 0;
-let didRightDAS = false;
+let rightDidDAS = false;
 let uIScale = 1377/1900;
 let nextPieces = 7;
+
+// How many frames it should take for the AS to move the active mino.
+let aSUpdateDelay = 2;
+
 
 const SWAP = 1;
 const I = 2;
@@ -654,47 +658,335 @@ function shiftActiveTetromino({fullShift = true, rowChange1 = 0, columnChange1 =
   }
 }
 
-function moveLeft() {
-  // Checks if the player is trying to move left, if they aren't at the edge, and the player hasn't just hard-dropped.
-  const willNotHitLeftWall = (columnNumber) => eval(`activeTetromino.column${columnNumber} - 1 >= 0`);
-  
-  if ((keyIsDown(LEFT_ARROW) || keyIsDown(KEY_A)) && willNotHitLeftWall(1) && willNotHitLeftWall(2)
-    && willNotHitLeftWall(3) && willNotHitLeftWall(4) && hardDrop === false) {
-    
-    // Checks if the player is trying to move the tetromino inside another tetromino.
-    for (let minoToCheck of tetrisBoards.get("tetrisGame0").minos) {
-      obstructionOnLeftSide = minoToCheck.collidesWithActive(-1);
-      if (obstructionOnLeftSide) {
-        break;
-      }
+/**
+ * Moves the active tetromino, after a delay, and only if it doesn't collide with a wall.
+ * @param {number} distanceToMove - How far the player is trying to move left or right.
+ * @param {number} keyToCheck1 - The primary key checked to move.
+ * @param {number} keyToCheck2 - The secondary key checked to move.
+ * @param {string} leftOrRight - The direction moved, must be "left" or "right".
+ * @param {number} maxDistance - The biggest value the active mino can go.
+ */
+function moveLeftOrRight(distanceToMove, keyToCheck1, keyToCheck2, leftOrRight, maxDistance) {
+  let obstructionOnSide;
+
+  // Loops through every mino.
+  for (let minoToCheck of tetrisBoards.get("tetrisGame0").minos) {
+
+    // Checks if there is a mino to the side moved of the active tetromino, and if there is, ends the loop.
+    obstructionOnSide = minoToCheck.collidesWithActive(distanceToMove);
+    if (obstructionOnSide) {
+      break;
     }
-    if (!obstructionOnLeftSide && ((leftTimeHeld === 0 || leftTimeHeld >= holdDelay) && !didLeftDAS
-      || leftTimeHeld >= 100/3 + holdDelay && didLeftDAS)) {
-      shiftActiveTetromino({columnChange1: -1});
-      if (leftTimeHeld !== 0) {
-        if (didLeftDAS) {
-          leftTimeStartedHeld += 100/3;
-          if (timer - leftTimeStartedHeld >= 100/3 + holdDelay) {
-            moveLeft();
-          }
+  }
+
+  // Is there not something to the left/right, has delay been finished or just started, and is the correct frame.
+  if (!obstructionOnSide && ((eval(`${leftOrRight}TimeHeld`) === 0 ||
+    eval(`${leftOrRight}TimeHeld`) >= holdDelay) && !eval(`${leftOrRight}didDAS`) ||
+    eval(`${leftOrRight}TimeHeld`) >= aSUpdateDelay * 50/3 + holdDelay && eval(`${leftOrRight}didDAS`))) {
+
+    shiftActiveTetromino({columnChange1: distanceToMove});
+
+    // If this isn't the movement pre-DAS, add the milliseconds that it should have taken in-between updates.
+    if (eval(`${leftOrRight}TimeHeld`) !== 0) {
+      if (eval(`${leftOrRight}didDAS`)) {
+        eval(`${leftOrRight}TimeStartedHeld += aSUpdateDelay * 50/3;`);
+
+        // If the conditions to move left haven't been satisfied, then try moving left again.
+        if (timer - eval(`${leftOrRight}TimeStartedHeld`) >= aSUpdateDelay * 50/3 + holdDelay) {
+          checkIfMoveLeftOrRight(distanceToMove, keyToCheck1, keyToCheck2, leftOrRight, maxDistance);
         }
-        didLeftDAS = true;
       }
+
+      eval(`${leftOrRight}didDAS = true;`);
     }
-    obstructionOnLeftSide = false;
-    leftTimeHeld = timer - leftTimeStartedHeld;
   }
+
+  eval(`${leftOrRight}TimeHeld = timer - ${leftOrRight}TimeStartedHeld;`);
+}
+
+/**
+ * Checks if the player is holding a key and won't hit the wall, then moves the active tetromino.
+ * @param {number} distanceToMove - How far the player is trying to move left or right.
+ * @param {number} keyToCheck1 - The primary key checked to move.
+ * @param {number} keyToCheck2 - The secondary key checked to move.
+ * @param {string} leftOrRight - The direction moved, must be "left" or "right".
+ * @param {string} maxDistance - The range the active mino can go.
+ */
+function checkIfMoveLeftOrRight(distanceToMove, keyToCheck1, keyToCheck2, leftOrRight, maxDistance) {
+  /**
+   * Checks if a specific mino would hit the wall if it moved.
+   * @param {number} minoNumber - The number of the mino to be checked on the active tetromino.
+   * @returns {boolean} - Whether or not it is safe to move.
+   */
+  const willNotHitWall = (minoNumber) => 
+    eval(`activeTetromino.column${minoNumber} + ${distanceToMove} ${maxDistance}`);
+  
+  // If the user is holding left and wouldn't hit the left wall, attempt to move left.
+  if ((keyIsDown(keyToCheck1) || keyIsDown(keyToCheck2)) && willNotHitWall(1) && willNotHitWall(2)
+    && willNotHitWall(3) && willNotHitWall(4) && hardDrop === false) {
+    moveLeftOrRight(distanceToMove, keyToCheck1, keyToCheck2, leftOrRight, maxDistance);
+  }
+
   else {
-    leftTimeHeld = 0;
-    leftTimeStartedHeld = timer;
-    didLeftDAS = false;
+    eval(`${leftOrRight}TimeHeld = 0;`);
+    eval(`${leftOrRight}TimeStartedHeld = timer;`);
+    eval(`${leftOrRight}didDAS = false;`);
   }
+  
   activeTetromino.rotatedLast = false;
 }
 
+/**
+ * Checks if the player is trying to soft or hard drop and sets variables accordingly.
+ */
+function drop() {
+  // Checks if the player is trying to soft-drop, speeding up the tetromino's drop speed.
+  if (keyIsDown(DOWN_ARROW) || keyIsDown(KEY_S)) {
+    softDrop = true;
+  }
+  else {
+    softDrop = false;
+  }
+      
+  // Checks if the player is trying to hard-drop, allowing it if they tapped rather than held the space bar.
+  if (keyIsDown(SPACE)) {
+    if (!hardDropped) {
+      hardDropped = true;
+      hardDrop = "movePiece";
+      activeTetromino.rotatedLast = false;
+    }
+  }
+  else {
+    hardDropped = false;
+  }
+}
+
+/**
+ * Rotates the active tetromino.
+ * @param {boolean} clockwise - Whether or not the rotation is clockwise.
+ */
+function initialRotation(clockwise) {
+  // Starting rotation to rotation right, or rotation left to 2 rotation position.
+  if (activeTetromino.rotation === 0 && clockwise || activeTetromino.rotation === 3 && !clockwise) {
+    shiftActiveTetromino({fullShift: false, rowChange1: activeTetromino.blockChange1[1],
+      columnChange1: activeTetromino.blockChange1[0], rowChange2: activeTetromino.blockChange2[1],
+      columnChange2: activeTetromino.blockChange2[0], rowChange3: activeTetromino.blockChange3[1],
+      columnChange3: activeTetromino.blockChange3[0], rowChange4: activeTetromino.blockChange4[1], 
+      columnChange4: activeTetromino.blockChange4[0]});
+  }
+
+  // Rotation right to 2 rotations, or starting roation to left rotation.
+  else if (activeTetromino.rotation === 1 && clockwise || activeTetromino.rotation === 0 && !clockwise) {
+    shiftActiveTetromino({fullShift: false, rowChange1: activeTetromino.blockChange1[0],
+      columnChange1: -activeTetromino.blockChange1[1], rowChange2: activeTetromino.blockChange2[0],
+      columnChange2: -activeTetromino.blockChange2[1], rowChange3: activeTetromino.blockChange3[0],
+      columnChange3: -activeTetromino.blockChange3[1], rowChange4: activeTetromino.blockChange4[0],
+      columnChange4: -activeTetromino.blockChange4[1]});
+  }
+
+  // 2 rotations to rotation left, or rotation right to starting rotation.
+  else if (activeTetromino.rotation === 2 && clockwise || activeTetromino.rotation === 1 && !clockwise) {
+    shiftActiveTetromino({fullShift: false, rowChange1: -activeTetromino.blockChange1[1],
+      columnChange1: -activeTetromino.blockChange1[0], rowChange2: -activeTetromino.blockChange2[1],
+      columnChange2: -activeTetromino.blockChange2[0], rowChange3: -activeTetromino.blockChange3[1],
+      columnChange3: -activeTetromino.blockChange3[0], rowChange4: -activeTetromino.blockChange4[1],
+      columnChange4: -activeTetromino.blockChange4[0]});
+  }
+
+  // Rotation left to starting rotation, or 2 rotation to rotation right.
+  else {
+    shiftActiveTetromino({fullShift: false, rowChange1: -activeTetromino.blockChange1[0],
+      columnChange1: activeTetromino.blockChange1[1], rowChange2: -activeTetromino.blockChange2[0],
+      columnChange2: activeTetromino.blockChange2[1], rowChange3: -activeTetromino.blockChange3[0],
+      columnChange3: activeTetromino.blockChange3[1], rowChange4: -activeTetromino.blockChange4[0],
+      columnChange4: activeTetromino.blockChange4[1]});
+  }
+}
+
+function performKickTests(clockwise) {
+  for (let kickTests = 0; invalidRotation === true && kickTests < 5; kickTests++) {
+    invalidRotation = false;
+
+    for (let checkMino of tetrisBoards.get("tetrisGame0").minos) {
+      for (let activeMino of [1, 2, 3, 4]) {
+        if (eval(`activeTetromino.column${activeMino}`) === checkMino.column &&
+        eval(`activeTetromino.row${activeMino}`) === checkMino.row ||
+        eval(`activeTetromino.column${activeMino}`) < 0 ||
+        eval(`activeTetromino.column${activeMino}`) >= columnLines ||
+        eval(`activeTetromino.row${activeMino}`) >= rowLines) {
+          invalidRotation = true;
+          break;
+        }
+      }
+
+      if (invalidRotation) {
+        break;
+      }
+    }
+
+    if (invalidRotation) {
+      if (activeTetromino.color === "cyan" && ((activeTetromino.rotation !== 1 &&
+        activeTetromino.rotation !== 3 || !clockwise) && (activeTetromino.rotation !== 0 &&
+        activeTetromino.rotation !== 2 || clockwise) || kickTests !== 0) && (kickTests !== 4 ||
+        (activeTetromino.rotation === 0 || activeTetromino.rotation === 2) && !clockwise ||
+        (activeTetromino.rotation === 1 || activeTetromino.rotation === 3) && clockwise)
+      ) {
+        if (activeTetromino.rotation === 0 && (clockwise || kickTests !== 0 && kickTests !== 2) &&
+        kickTests !== 2 || activeTetromino.rotation === 3 && (!clockwise || kickTests === 2) ||
+        activeTetromino.rotation === 1 && (clockwise && kickTests !== 2 || kickTests === 2 && ! clockwise) ||
+        activeTetromino.rotation === 2 && kickTests === 2) {
+          if (kickTests === 0 || kickTests === 4) {
+            shiftActiveTetromino({columnChange1: -2});
+          }
+
+          else {
+            shiftActiveTetromino({columnChange1: 3});
+          }
+        }
+
+        else if (kickTests === 0) { 
+          shiftActiveTetromino({columnChange1: 2});
+        }
+
+        else if (kickTests === 1 || kickTests === 2) {
+          shiftActiveTetromino({columnChange1: -3}); 
+        }
+      }
+
+      else if (kickTests !== 1) {
+        if (((activeTetromino.rotation === 0 || activeTetromino.rotation === 3 &&
+              activeTetromino.color !== "cyan" || activeTetromino.rotation === 1 &&
+              activeTetromino.color === "cyan") && clockwise || (activeTetromino.rotation === 2 &&
+              activeTetromino.color !== "cyan" || activeTetromino.rotation === 3 ||
+              activeTetromino.rotation === 0 && activeTetromino.color === "cyan") &&
+            !clockwise) && kickTests === 0 || kickTests === 2 && (activeTetromino.rotation === 1 ||
+            activeTetromino.rotation === 3 || activeTetromino.rotation === 2 && clockwise) || kickTests === 3 &&
+          (activeTetromino.rotation === 3 || activeTetromino.rotation === 0 && clockwise ||
+            activeTetromino.rotation === 2 && !clockwise) || kickTests === 3 && (activeTetromino.rotation !== 3 &&
+          (activeTetromino.rotation !== 0 || !clockwise) && (activeTetromino.rotation !== 2 || clockwise) ||
+          activeTetromino.color === "cyan" && activeTetromino.rotation !== 1)) {
+          shiftActiveTetromino({columnChange1: -1});
+        }
+
+        else {
+          shiftActiveTetromino({columnChange1: 1});
+        }
+      }
+
+      if (kickTests === 1 && activeTetromino.color !== "cyan" || kickTests === 2 &&
+      activeTetromino.color === "cyan" && ((activeTetromino.rotation === 0 || activeTetromino.rotation === 2) &&
+      clockwise || (activeTetromino.rotation === 1 || activeTetromino.rotation === 3) && ! clockwise) ||
+      kickTests === 4 && activeTetromino.color === "cyan" && ((activeTetromino.rotation === 0
+        || activeTetromino.rotation === 2) && ! clockwise || (activeTetromino.rotation === 1
+          || activeTetromino.rotation === 3) && clockwise)) {
+        if (activeTetromino.rotation === 0 && (activeTetromino.color !== "cyan" || kickTests === 4) ||
+          activeTetromino.rotation === 2 && kickTests !== 4 || activeTetromino.rotation === 1 &&
+          activeTetromino.color === "cyan") {
+          shiftActiveTetromino({rowChange1: -1});
+        }
+
+        else {
+          shiftActiveTetromino({rowChange1: 1});
+        }
+      }
+
+      else if (kickTests === 2 && activeTetromino.color === "cyan" || kickTests === 4) {
+        if (activeTetromino.rotation === 0 && (kickTests !== 4 || activeTetromino.color !== "cyan") ||
+          activeTetromino.rotation === 1 && activeTetromino.color === "cyan" || activeTetromino.rotation === 2 &&
+          kickTests === 4 && activeTetromino.color !== "cyan") {
+          shiftActiveTetromino({rowChange1: -2});
+        }
+
+        else {
+          shiftActiveTetromino({rowChange1: 2});
+        }
+      }
+
+      else if (kickTests === 2 || kickTests === 3 && activeTetromino.color === "cyan") {
+        if (activeTetromino.rotation === 0 && (activeTetromino.color !== "cyan" || !clockwise) || 
+          activeTetromino.rotation === 2 && (clockwise || kickTests !== 3) || activeTetromino.rotation === 1 &&
+          activeTetromino.color === "cyan" && kickTests === 3) {
+          shiftActiveTetromino({rowChange1: 3});
+        }
+
+        else {
+          shiftActiveTetromino({rowChange1: -3});
+        }
+      }
+    }
+
+    if (!invalidRotation) {
+      return kickTests;
+    }
+  }
+}
+
+/**
+ * Rotates the active tetromino.
+ * @param {boolean} clockwise - Whether or not to rotate it clockwise. 
+ */
+function rotateTetromino(clockwise) {
+  activeTetromino.rotatedLast = true;
+  invalidRotation = true;
+  activeTetrominoOld = {...activeTetromino};
+
+  initialRotation(clockwise);
+
+  activeTetromino.kickTestsTaken = performKickTests(clockwise);
+
+  if (clockwise) {
+    activeTetromino.rotation++;
+    if (activeTetromino.rotation > 3) {
+      activeTetromino.rotation = 0;
+    }
+  }
+  else {
+    activeTetromino.rotation--;
+    if (activeTetromino.rotation < 0) {
+      activeTetromino.rotation = 3;
+    }
+  }
+
+  if (invalidRotation) {
+    activeTetromino = activeTetrominoOld;
+  }
+}
+
+/**
+ * Detects if the player is trying to rotate the active tetromino.
+ */
+function rotateIt () {
+
+  // For clockwise rotations.
+  if (keyIsDown(UP_ARROW) || keyIsDown(KEY_X) || keyIsDown(KEY_W)){
+    if (!rotatedRight && !rotatedLeft) {
+      rotateTetromino(true);
+      rotatedRight = true;
+    }
+  }
+
+  // Only allow rotations on press, rather than holding the key down.
+  else {
+    rotatedRight = false;
+  }
+  
+  // For counter-clockwise rotations.
+  if (keyIsDown(CONTROL) || keyIsDown(KEY_Z)){
+    if (!rotatedLeft && !rotatedRight) {
+      rotateTetromino(false);
+      rotatedLeft = true;
+    }
+  }
+
+  // Only allow rotations on press, rather than holding the key down.
+  else {
+    rotatedLeft = false;
+  }
+}
+
 function controlTetris() {
-  moveLeft();
-  moveRight();
+  checkIfMoveLeftOrRight(-1, LEFT_ARROW, KEY_A, "left", ">= 0");
+  checkIfMoveLeftOrRight(1, RIGHT_ARROW, KEY_D, "right", "< columnLines");
   drop();
   rotateIt();
   hold();
@@ -799,272 +1091,6 @@ function grabNextFromBag() {
   }
 
   bag.shift();
-}
-
-function rotateTetromino(clockwise) {
-  activeTetromino.rotatedLast = true;
-  invalidRotation = true;
-  activeTetrominoOld = {...activeTetromino};
-
-  initialRotation(clockwise);
-
-  activeTetromino.kickTestsTaken = performKickTests(clockwise);
-
-  if (clockwise) {
-    activeTetromino.rotation++;
-    if (activeTetromino.rotation > 3) {
-      activeTetromino.rotation = 0;
-    }
-  }
-  else {
-    activeTetromino.rotation--;
-    if (activeTetromino.rotation < 0) {
-      activeTetromino.rotation = 3;
-    }
-  }
-
-  if (invalidRotation) {
-    activeTetromino = activeTetrominoOld;
-  }
-}
-
-function performKickTests(clockwise) {
-  for (let kickTests = 0; invalidRotation === true && kickTests < 5; kickTests++) {
-    invalidRotation = false;
-    for (let checkMino of tetrisBoards.get("tetrisGame0").minos) {
-      for (let tetrominoMino of [[activeTetromino.column1, activeTetromino.row1],
-        [activeTetromino.column2, activeTetromino.row2],
-        [activeTetromino.column3, activeTetromino.row3],
-        [activeTetromino.column4, activeTetromino.row4]]) {
-        if (tetrominoMino[0] === checkMino.column && tetrominoMino[1] === checkMino.row) {
-          invalidRotation = true;
-        }
-      }
-    }
-
-    for (let tetrominoMino of [[activeTetromino.column1, activeTetromino.row1],
-      [activeTetromino.column2, activeTetromino.row2],
-      [activeTetromino.column3, activeTetromino.row3],
-      [activeTetromino.column4, activeTetromino.row4]]) {
-      if (tetrominoMino[1] >= rowLines ||
-    tetrominoMino[0] < 0 ||
-    tetrominoMino[0] >= columnLines) {
-        invalidRotation = true;
-      }
-    }
-
-    if (invalidRotation) {
-      if (activeTetromino.color === "cyan" && 
-      ((activeTetromino.rotation !== 1 &&
-        activeTetromino.rotation !== 3 ||
-        ! clockwise) && 
-      (activeTetromino.rotation !== 0 &&
-        activeTetromino.rotation !== 2 || 
-        clockwise) || 
-        kickTests !== 0) &&
-        (kickTests !== 4 ||
-        (activeTetromino.rotation === 0 || 
-        activeTetromino.rotation === 2) &&
-      ! clockwise ||
-      (activeTetromino.rotation === 1 || 
-      activeTetromino.rotation === 3) &&
-      clockwise)
-      ) {
-        if (activeTetromino.rotation === 0 && (clockwise || kickTests !== 0 && kickTests !== 2) && kickTests !== 2 || activeTetromino.rotation === 3 && (!clockwise || kickTests === 2) || activeTetromino.rotation === 1 && (clockwise && kickTests !== 2 || kickTests === 2 && ! clockwise) || activeTetromino.rotation === 2 && kickTests === 2) {
-          if (kickTests === 0 || kickTests === 4) {
-            shiftActiveTetromino({columnChange1: -2});
-          }
-          else {
-            shiftActiveTetromino({columnChange1: 3});
-          }
-        }
-        else {
-          if (kickTests === 0) {
-            shiftActiveTetromino({columnChange1: 2});
-          }
-          else if (kickTests === 1 || kickTests === 2) {
-            shiftActiveTetromino({columnChange1: -3});
-          }
-        }
-      }
-      else if (kickTests !== 1) {
-        if (((activeTetromino.rotation === 0 ||
-              activeTetromino.rotation === 3 &&
-              activeTetromino.color !== "cyan" ||
-              activeTetromino.rotation === 1 &&
-              activeTetromino.color === "cyan") &&
-            clockwise ||
-            (activeTetromino.rotation === 2 &&
-              activeTetromino.color !== "cyan" ||
-              activeTetromino.rotation === 3 ||
-              activeTetromino.rotation === 0 &&
-              activeTetromino.color === "cyan") &&
-            ! clockwise) &&
-          kickTests === 0 ||
-          kickTests === 2 &&
-          (activeTetromino.rotation === 1 ||
-            activeTetromino.rotation === 3 ||
-            activeTetromino.rotation === 2 &&
-            clockwise) ||
-          kickTests === 3 &&
-          (activeTetromino.rotation === 3 ||
-            activeTetromino.rotation === 0 &&
-            clockwise ||
-            activeTetromino.rotation === 2 &&
-            ! clockwise) ||
-          kickTests === 3 &&
-          (activeTetromino.rotation !== 3 &&
-          (activeTetromino.rotation !== 0 ||
-          ! clockwise) && 
-          (activeTetromino.rotation !== 2 ||
-          clockwise) ||
-          activeTetromino.color === "cyan" &&
-          activeTetromino.rotation !== 1
-          )
-        ) {
-          shiftActiveTetromino({columnChange1: -1});
-        }
-        else {
-          shiftActiveTetromino({columnChange1: 1});
-        }
-      }
-
-      if (kickTests === 1 && activeTetromino.color !== "cyan" || kickTests === 2 && activeTetromino.color === "cyan" && ((activeTetromino.rotation === 0 || activeTetromino.rotation === 2) && clockwise || (activeTetromino.rotation === 1 || activeTetromino.rotation === 3) && ! clockwise) || kickTests === 4 && activeTetromino.color === "cyan" && ((activeTetromino.rotation === 0 || activeTetromino.rotation === 2) && ! clockwise || (activeTetromino.rotation === 1 || activeTetromino.rotation === 3) && clockwise)) {
-        if (activeTetromino.rotation === 0 &&
-          (activeTetromino.color !== "cyan" ||
-          kickTests === 4) ||
-          activeTetromino.rotation === 2 && 
-          kickTests !== 4 || 
-          activeTetromino.rotation === 1 &&
-          activeTetromino.color === "cyan") {
-          shiftActiveTetromino({rowChange1: -1});
-        }
-        else {
-          shiftActiveTetromino({rowChange1: 1});
-        }
-      }
-
-      else if (kickTests === 2 && activeTetromino.color === "cyan" || kickTests === 4) {
-        if (activeTetromino.rotation === 0 && 
-          (kickTests !== 4 ||
-          activeTetromino.color !== "cyan") ||
-          activeTetromino.rotation === 1 &&
-          activeTetromino.color === "cyan" ||
-          activeTetromino.rotation === 2 &&
-          kickTests === 4 &&
-          activeTetromino.color !== "cyan") {
-          shiftActiveTetromino({rowChange1: -2});
-        }
-        else {
-          shiftActiveTetromino({rowChange1: 2});
-        }
-      }
-
-      else if (kickTests === 2 || kickTests === 3 && activeTetromino.color === "cyan") {
-        if (activeTetromino.rotation === 0 &&
-          (activeTetromino.color !== "cyan" ||
-          ! clockwise) || 
-          activeTetromino.rotation === 2 &&
-          (clockwise ||
-            kickTests !== 3) ||
-          activeTetromino.rotation === 1 &&
-          activeTetromino.color === "cyan" &&
-          kickTests === 3) {
-          shiftActiveTetromino({rowChange1: 3});
-        }
-        else {
-          shiftActiveTetromino({rowChange1: -3});
-        }
-      }
-    }
-    if (!invalidRotation) {
-      return kickTests;
-    }
-  }
-}
-  
-function moveRight() {
-// Checks if the player is trying to move right, if they aren't at the edge, and the player hasn't just hard-dropped.
-  const willNotHitRightWall = (columnNumber) => eval(`activeTetromino.column${columnNumber} + 1 < columnLines`);
-  
-  if ((keyIsDown(RIGHT_ARROW) || keyIsDown(KEY_D)) && willNotHitRightWall(1) && willNotHitRightWall(2)
-  && willNotHitRightWall(3) && willNotHitRightWall(4) && hardDrop === false) {
-  
-    // Checks if the player is trying to move the tetromino inside another tetromino.
-    for (let minoToCheck of tetrisBoards.get("tetrisGame0").minos) {
-      obstructionOnRightSide = minoToCheck.collidesWithActive(1);
-      if (obstructionOnRightSide) {
-        break;
-      }
-    }
-    if (!obstructionOnRightSide && ((rightTimeHeld === 0 || rightTimeHeld >= holdDelay) && !didRightDAS
-    || rightTimeHeld >= 100/3 + holdDelay && didRightDAS)) {
-      shiftActiveTetromino({columnChange1: 1});
-      if (rightTimeHeld !== 0) {
-        if (didRightDAS) {
-          rightTimeStartedHeld += 100/3;
-          if (timer - rightTimeStartedHeld >= 100/3 + holdDelay) {
-            moveRight();
-          }
-        }
-        didRightDAS = true;
-      }
-    }
-    obstructionOnRightSide = false;
-    rightTimeHeld = timer - rightTimeStartedHeld;
-  }
-  else {
-    rightTimeHeld = 0;
-    rightTimeStartedHeld = timer;
-    didRightDAS = false;
-  }
-  activeTetromino.rotatedLast = false;
-}
-    
-function drop() {
-  // Checks if the player is trying to soft-drop, speeding up the tetromino's drop speed.
-  if (keyIsDown(DOWN_ARROW) || keyIsDown(KEY_S)) {
-    softDrop = true;
-  }
-  else {
-    softDrop = false;
-  }
-      
-  // Checks if the player is trying to hard-drop, allowing it if they tapped rather than held the space bar.
-  if (keyIsDown(SPACE)) {
-    if (!hardDropped) {
-      hardDropped = true;
-      hardDrop = "movePiece";
-      activeTetromino.rotatedLast = false;
-    }
-  }
-  else {
-    hardDropped = false;
-  }
-}
-    
-function rotateIt () {
-  // Checks if the player is trying to rotate the tetromino clockwise and that they pressed the key rather than held.
-  if (keyIsDown(UP_ARROW) || keyIsDown(KEY_X) || keyIsDown(KEY_W)){
-    if (!rotatedRight && !rotatedLeft) {
-      rotateTetromino(true);
-      rotatedRight = true;
-    }
-  }
-  else {
-    rotatedRight = false;
-  }
-  
-  // Checks if the player is trying to rotate the tetromino counter-clockwise and that they pressed the key rather than held.
-  if (keyIsDown(CONTROL) || keyIsDown(KEY_Z)){
-    if (!rotatedLeft && !rotatedRight) {
-      rotateTetromino(false);
-      rotatedLeft = true;
-    }
-  }
-  else {
-    rotatedLeft = false;
-  }
 }
 
 function hold() {
@@ -1296,40 +1322,6 @@ function goDownAndScore() {
 
   if (softDrop) {
     score++;
-  }
-}
-
-function initialRotation(clockwise) {
-  if (activeTetromino.rotation === 0 && clockwise || activeTetromino.rotation === 3 && !clockwise) {
-    shiftActiveTetromino({fullShift: false, rowChange1: activeTetromino.blockChange1[1],
-      columnChange1: activeTetromino.blockChange1[0], rowChange2: activeTetromino.blockChange2[1],
-      columnChange2: activeTetromino.blockChange2[0], rowChange3: activeTetromino.blockChange3[1],
-      columnChange3: activeTetromino.blockChange3[0], rowChange4: activeTetromino.blockChange4[1], 
-      columnChange4: activeTetromino.blockChange4[0]});
-  }
-
-  else if (activeTetromino.rotation === 1 && clockwise || activeTetromino.rotation === 0 && !clockwise) {
-    shiftActiveTetromino({fullShift: false, rowChange1: activeTetromino.blockChange1[0],
-      columnChange1: -activeTetromino.blockChange1[1], rowChange2: activeTetromino.blockChange2[0],
-      columnChange2: -activeTetromino.blockChange2[1], rowChange3: activeTetromino.blockChange3[0],
-      columnChange3: -activeTetromino.blockChange3[1], rowChange4: activeTetromino.blockChange4[0],
-      columnChange4: -activeTetromino.blockChange4[1]});
-  }
-
-  else if (activeTetromino.rotation === 2 && clockwise || activeTetromino.rotation === 1 && !clockwise) {
-    shiftActiveTetromino({fullShift: false, rowChange1: -activeTetromino.blockChange1[1],
-      columnChange1: -activeTetromino.blockChange1[0], rowChange2: -activeTetromino.blockChange2[1],
-      columnChange2: -activeTetromino.blockChange2[0], rowChange3: -activeTetromino.blockChange3[1],
-      columnChange3: -activeTetromino.blockChange3[0], rowChange4: -activeTetromino.blockChange4[1],
-      columnChange4: -activeTetromino.blockChange4[0]});
-  }
-
-  else {
-    shiftActiveTetromino({fullShift: false, rowChange1: -activeTetromino.blockChange1[0],
-      columnChange1: activeTetromino.blockChange1[1], rowChange2: -activeTetromino.blockChange2[0],
-      columnChange2: activeTetromino.blockChange2[1], rowChange3: -activeTetromino.blockChange3[0],
-      columnChange3: activeTetromino.blockChange3[1], rowChange4: -activeTetromino.blockChange4[0],
-      columnChange4: activeTetromino.blockChange4[1]});
   }
 }
 
