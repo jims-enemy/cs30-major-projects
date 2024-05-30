@@ -40,8 +40,9 @@ let rightTimeStartedHeld = 0;
 let rightDidDAS = false;
 let uIScale = 1377/1900;
 let nextPieces = 7;
+let softDropScore = 1;
 
-// How many frames it should take for the AS to move the active mino.
+// How many frames it should take for the AS to move the active mino at 60FPS.
 let aSUpdateDelay = 2;
 
 
@@ -66,6 +67,7 @@ const KEY_C = 67;
 const TETROMINO_I = {color: "cyan",
   isActive: true,
   rotation: 0,
+  pieceName: I,
   column1: Math.floor(columnLines/2) - 2,
   row1: -1,
   column2: Math.floor(columnLines/2) - 1,
@@ -83,6 +85,7 @@ const TETROMINO_I = {color: "cyan",
 const TETROMINO_J = {color: "blue",
   isActive: true,
   rotation: 0,
+  pieceName: J,
   column1: Math.floor(columnLines/2) - 2,
   row1: -1,
   column2: Math.floor(columnLines/2) - 2,
@@ -100,6 +103,7 @@ const TETROMINO_J = {color: "blue",
 const TETROMINO_L = {color: "orange",
   isActive: true,
   rotation: 0,
+  pieceName: L,
   column1: Math.floor(columnLines/2) - 2,
   row1: 0,
   column2: Math.floor(columnLines/2) - 1,
@@ -117,6 +121,7 @@ const TETROMINO_L = {color: "orange",
 const TETROMINO_O = {color: "yellow",
   isActive: true,
   rotation: 0,
+  pieceName: O,
   column1: Math.floor(columnLines/2) - 1,
   row1: -1,
   column2: Math.floor(columnLines/2) - 1,
@@ -134,6 +139,7 @@ const TETROMINO_O = {color: "yellow",
 const TETROMINO_S = {color: "green",
   isActive: true,
   rotation: 0,
+  pieceName: S,
   column1: Math.floor(columnLines/2) - 2,
   row1: 0,
   column2: Math.floor(columnLines/2) - 1,
@@ -151,6 +157,7 @@ const TETROMINO_S = {color: "green",
 const TETROMINO_Z = {color: "red",
   isActive: true,
   rotation: 0,
+  pieceName: Z,
   column1: Math.floor(columnLines/2) - 2,
   row1: -1,
   column2: Math.floor(columnLines/2) - 1,
@@ -168,6 +175,7 @@ const TETROMINO_Z = {color: "red",
 const TETROMINO_T = {color: "purple",
   isActive: true,
   rotation: 0,
+  pieceName: T,
   column1: Math.floor(columnLines/2) - 2,
   row1: 0,
   column2: Math.floor(columnLines/2) - 1,
@@ -807,16 +815,19 @@ function performKickTests(clockwise) {
   for (let kickTests = 0; invalidRotation === true && kickTests < 5; kickTests++) {
     invalidRotation = false;
 
-    for (let checkMino of tetrisBoards.get("tetrisGame0").minos) {
-      for (let activeMino of [1, 2, 3, 4]) {
+    for (let activeMino of [1, 2, 3, 4]) {
+      for (let checkMino of tetrisBoards.get("tetrisGame0").minos) {
         if (eval(`activeTetromino.column${activeMino}`) === checkMino.column &&
-        eval(`activeTetromino.row${activeMino}`) === checkMino.row ||
-        eval(`activeTetromino.column${activeMino}`) < 0 ||
-        eval(`activeTetromino.column${activeMino}`) >= columnLines ||
-        eval(`activeTetromino.row${activeMino}`) >= rowLines) {
+        eval(`activeTetromino.row${activeMino}`) === checkMino.row) {
           invalidRotation = true;
           break;
         }
+      }
+
+      if (eval(`activeTetromino.column${activeMino}`) < 0 ||
+      eval(`activeTetromino.column${activeMino}`) >= columnLines ||
+      eval(`activeTetromino.row${activeMino}`) >= rowLines) {
+        invalidRotation = true;
       }
 
       if (invalidRotation) {
@@ -825,7 +836,7 @@ function performKickTests(clockwise) {
     }
 
     if (invalidRotation) {
-      if (activeTetromino.color === "cyan" && ((activeTetromino.rotation !== 1 &&
+      if (activeTetromino.pieceName === I && ((activeTetromino.rotation !== 1 &&
         activeTetromino.rotation !== 3 || !clockwise) && (activeTetromino.rotation !== 0 &&
         activeTetromino.rotation !== 2 || clockwise) || kickTests !== 0) && (kickTests !== 4 ||
         (activeTetromino.rotation === 0 || activeTetromino.rotation === 2) && !clockwise ||
@@ -855,16 +866,16 @@ function performKickTests(clockwise) {
 
       else if (kickTests !== 1) {
         if (((activeTetromino.rotation === 0 || activeTetromino.rotation === 3 &&
-              activeTetromino.color !== "cyan" || activeTetromino.rotation === 1 &&
-              activeTetromino.color === "cyan") && clockwise || (activeTetromino.rotation === 2 &&
-              activeTetromino.color !== "cyan" || activeTetromino.rotation === 3 ||
-              activeTetromino.rotation === 0 && activeTetromino.color === "cyan") &&
+              activeTetromino.pieceName !== I || activeTetromino.rotation === 1 &&
+              activeTetromino.pieceName === I) && clockwise || (activeTetromino.rotation === 2 &&
+              activeTetromino.pieceName !== I || activeTetromino.rotation === 3 ||
+              activeTetromino.rotation === 0 && activeTetromino.pieceName === I) &&
             !clockwise) && kickTests === 0 || kickTests === 2 && (activeTetromino.rotation === 1 ||
             activeTetromino.rotation === 3 || activeTetromino.rotation === 2 && clockwise) || kickTests === 3 &&
           (activeTetromino.rotation === 3 || activeTetromino.rotation === 0 && clockwise ||
             activeTetromino.rotation === 2 && !clockwise) || kickTests === 3 && (activeTetromino.rotation !== 3 &&
           (activeTetromino.rotation !== 0 || !clockwise) && (activeTetromino.rotation !== 2 || clockwise) ||
-          activeTetromino.color === "cyan" && activeTetromino.rotation !== 1)) {
+          activeTetromino.pieceName === I && activeTetromino.rotation !== 1)) {
           shiftActiveTetromino({columnChange1: -1});
         }
 
@@ -873,15 +884,15 @@ function performKickTests(clockwise) {
         }
       }
 
-      if (kickTests === 1 && activeTetromino.color !== "cyan" || kickTests === 2 &&
-      activeTetromino.color === "cyan" && ((activeTetromino.rotation === 0 || activeTetromino.rotation === 2) &&
+      if (kickTests === 1 && activeTetromino.pieceName !== I || kickTests === 2 &&
+      activeTetromino.pieceName === I && ((activeTetromino.rotation === 0 || activeTetromino.rotation === 2) &&
       clockwise || (activeTetromino.rotation === 1 || activeTetromino.rotation === 3) && ! clockwise) ||
-      kickTests === 4 && activeTetromino.color === "cyan" && ((activeTetromino.rotation === 0
+      kickTests === 4 && activeTetromino.pieceName === I && ((activeTetromino.rotation === 0
         || activeTetromino.rotation === 2) && ! clockwise || (activeTetromino.rotation === 1
           || activeTetromino.rotation === 3) && clockwise)) {
-        if (activeTetromino.rotation === 0 && (activeTetromino.color !== "cyan" || kickTests === 4) ||
+        if (activeTetromino.rotation === 0 && (activeTetromino.pieceName !== I || kickTests === 4) ||
           activeTetromino.rotation === 2 && kickTests !== 4 || activeTetromino.rotation === 1 &&
-          activeTetromino.color === "cyan") {
+          activeTetromino.pieceName === I) {
           shiftActiveTetromino({rowChange1: -1});
         }
 
@@ -890,10 +901,10 @@ function performKickTests(clockwise) {
         }
       }
 
-      else if (kickTests === 2 && activeTetromino.color === "cyan" || kickTests === 4) {
-        if (activeTetromino.rotation === 0 && (kickTests !== 4 || activeTetromino.color !== "cyan") ||
-          activeTetromino.rotation === 1 && activeTetromino.color === "cyan" || activeTetromino.rotation === 2 &&
-          kickTests === 4 && activeTetromino.color !== "cyan") {
+      else if (kickTests === 2 && activeTetromino.pieceName === I || kickTests === 4) {
+        if (activeTetromino.rotation === 0 && (kickTests !== 4 || activeTetromino.pieceName !== I) ||
+          activeTetromino.rotation === 1 && activeTetromino.pieceName === I || activeTetromino.rotation === 2 &&
+          kickTests === 4 && activeTetromino.pieceName !== I) {
           shiftActiveTetromino({rowChange1: -2});
         }
 
@@ -902,10 +913,10 @@ function performKickTests(clockwise) {
         }
       }
 
-      else if (kickTests === 2 || kickTests === 3 && activeTetromino.color === "cyan") {
-        if (activeTetromino.rotation === 0 && (activeTetromino.color !== "cyan" || !clockwise) || 
+      else if (kickTests === 2 || kickTests === 3 && activeTetromino.pieceName === I) {
+        if (activeTetromino.rotation === 0 && (activeTetromino.pieceName !== I || !clockwise) || 
           activeTetromino.rotation === 2 && (clockwise || kickTests !== 3) || activeTetromino.rotation === 1 &&
-          activeTetromino.color === "cyan" && kickTests === 3) {
+          activeTetromino.pieceName === I && kickTests === 3) {
           shiftActiveTetromino({rowChange1: 3});
         }
 
@@ -930,25 +941,33 @@ function rotateTetromino(clockwise) {
   invalidRotation = true;
   activeTetrominoOld = {...activeTetromino};
 
+  // Updates the tetrominos position, if possible.
   initialRotation(clockwise);
-
   activeTetromino.kickTestsTaken = performKickTests(clockwise);
 
+  // In the event that no rotation could have been made, set the active tetromino back to what it used to be.
+  if (invalidRotation) {
+    activeTetromino = activeTetrominoOld;
+    return;
+  }
+
+  // If rotated clockwise, increment the rotation counter.
   if (clockwise) {
     activeTetromino.rotation++;
+
+
     if (activeTetromino.rotation > 3) {
       activeTetromino.rotation = 0;
     }
   }
+
+  // Otherwise, decrement the rotation counter.
   else {
     activeTetromino.rotation--;
+
     if (activeTetromino.rotation < 0) {
       activeTetromino.rotation = 3;
     }
-  }
-
-  if (invalidRotation) {
-    activeTetromino = activeTetrominoOld;
   }
 }
 
@@ -984,12 +1003,280 @@ function rotateIt () {
   }
 }
 
+/**
+ * Swaps the current piece with whatever is held.
+ */
+function hold() {
+  // Checks if the hold keys are pressed, you haven't held already this turn, and the tetromino is active.
+  if ((keyIsDown(SHIFT) || keyIsDown(KEY_C)) && canHold && activeTetromino.isActive) {
+    // If there is already a piece held, put it at the start of the bag.
+    if (heldPiece) {
+      bag.unshift(heldPiece);
+    }
+    
+    // Replaces the held piece with the active piece and disables the active piece.
+    heldPiece = activeTetromino.pieceName;
+    activeTetromino.isActive = false;
+
+    // Prevents holding multiple times without locking in a tetromino.
+    canHold = false;
+  }
+}
+
+/**
+ * Calls all the functions responsible for checking if keys are pressed.
+ */
 function controlTetris() {
   checkIfMoveLeftOrRight(-1, LEFT_ARROW, KEY_A, "left", ">= 0");
   checkIfMoveLeftOrRight(1, RIGHT_ARROW, KEY_D, "right", "< columnLines");
   drop();
   rotateIt();
   hold();
+}
+
+/**
+ * Moves the active tetromino down, updates the timer, and adds to the score if soft-dropping.
+ */
+function goDownAndScore() {
+  shiftActiveTetromino({rowChange1: 1});
+  lastUpdate = timer;
+  activeTetromino.rotatedLast = false;
+
+  if (softDrop) {
+    score += softDropScore;
+  }
+}
+
+/**
+ * Counts all the minos in each row.
+ * @returns {Map<number, number>} A map with keys being row numbers, and values being the minos in the row.
+ */
+function countMinosInRow() {
+  let minosInRow = new Map();
+
+  // Loops through every mino in the active board.
+  for (let currentMino of tetrisBoards.get("tetrisGame0").minos) {
+
+    // If a mino has already been found in that row, increment the amount attached to the key.
+    if (minosInRow.has(currentMino.row)) {
+      minosInRow.set(currentMino.row, minosInRow.get(currentMino.row) + 1);
+    }
+
+    // Otherwise, create a new key-value pair with the key being the row and a value of one.
+    else {
+      minosInRow.set(currentMino.row, 1);
+    }
+  }
+
+  return minosInRow;
+}
+
+/**
+ * Adds the score for clearing lines.
+ * @param {number} tSpinScore - The score to add if the line(s) was cleared with a t-spin.
+ * @param {number} defaultScore - The score to add if the line(s) was cleared regularly.
+ * @param {number} multiplier - How much to multiply the score to be added by.
+ * @param {number} [miniScore] - The score to add if the line(s) were cleared with a mini-t-spin, optional. 
+ */
+function addLineClearScore(tSpinScore, defaultScore, multiplier, miniScore = 0) {
+  // Checks if the active tetromino is a T.
+  if (activeTetromino.pieceName === T) {
+    // Checks if a t-spin was performed.
+    if (tSpin()) {
+      // Adds the t-spin score multiplied by the level and the multiplier.
+      score += tSpinScore * level * multiplier;
+
+      // Marks it as a difficult clear and ends the function.
+      difficultClear = true;
+      return;
+    }
+
+    // Checks if a mini-t-spin was performed instead.
+    else if (miniTSpin()) {
+      // Adds the mini-t-spin score multiplied by the level and the multiplier.
+      score += miniScore * level * multiplier;
+
+      // Marks it as a difficult clear and ends the function.
+      difficultClear = true;
+      return;
+    }
+  }
+  
+  // Otherwise, just add the default score multiplied by the level and not a difficult clear.
+  score += defaultScore * level;
+  difficultClear = false;
+}
+
+function scoreClearLines(linesCleared) {
+  let multiplier = 1;
+
+  if (difficultClear) {
+    multiplier = 1.5;
+  }
+
+  if (linesCleared === 4) {
+    score += 800 * level * multiplier;
+    difficultClear = true;
+    if (tetrisBoards.get("tetrisGame0").minos.length === 0) {
+      score += (2000 + 1200 * justTetrised) * level;
+    }
+    justTetrised = true;
+  }
+  
+  else {
+    justTetrised = false;
+    addLineClearScore(400 + 400*linesCleared, -100 + 200*linesCleared, multiplier, 200*linesCleared);
+    if (tetrisBoards.get("tetrisGame0").minos.length === 0) {
+      score += 800 + 400*(linesCleared - 1) + 100*(linesCleared - 1)*(linesCleared - 2);
+    }
+  }
+
+  comboCounter++;
+  score += 50 * comboCounter * level;
+}
+
+function clearLines() {
+  let linesCleared = 0;
+  let minosInRow = countMinosInRow();
+  
+  while([...minosInRow.values()].some(value => value >= columnLines)) {
+    for (let [rowToCheck, amountInRow] of minosInRow) {
+      if (amountInRow >= columnLines) {
+        for (let currentMino = tetrisBoards.get("tetrisGame0").minos.length - 1; currentMino >= 0; currentMino--) {
+          tetrisBoards.get("tetrisGame0").minos[currentMino].lineCleared(rowToCheck, currentMino);
+        }
+        linesCleared++;
+        break;
+      }
+    }
+    minosInRow = countMinosInRow();
+  }
+
+  if (activeTetromino.pieceName === T) {
+    for (let currentMino of tetrisBoards.get("tetrisGame0").minos) {
+      currentMino.neighborT();
+    }
+
+    if (isRotation(3, 2) && (activeTetromino.rotation - 1) * 4.5 === activeTetromino.column1) {
+      activeTetromino.rearCornerNeighbors++;
+    }
+  }
+
+  if (linesCleared) {
+    scoreClearLines(linesCleared);
+  }
+
+  else {
+    if (tSpin()) {
+      score += 400 * level;
+    }
+    
+    else if (miniTSpin()) {
+      score += 100 * level;
+    }
+
+    else {
+      difficultClear = false;
+    }
+
+    comboCounter = -1;
+    justTetrised = false;
+  }
+
+  totalLinesCleared += linesCleared;
+  if (totalLinesCleared >= 10 * level) {
+    level++;
+  }
+}
+
+function moveActiveDownSlowly() {
+  for (let minoToCheck of tetrisBoards.get("tetrisGame0").minos) {
+    let isBelow = (currentMino) => minoToCheck.row === eval("activeTetromino.row" + currentMino) + 1 &&
+    minoToCheck.column === eval("activeTetromino.column" + currentMino);
+
+    if (isBelow("1") || isBelow("2") || isBelow("3") || isBelow("4")) {
+      blockUnder = true;
+    }
+  }
+
+  const notBottom = (currentRow) => currentRow + 1 < rowLines;
+  if (notBottom(activeTetromino.row1) && notBottom(activeTetromino.row2) && notBottom(activeTetromino.row3)
+    && notBottom(activeTetromino.row4) && ! blockUnder) {
+    goDownAndScore();
+  }
+
+  else if (timer - lastUpdate >= lockDelay) {
+    for (let minoNumber = 1; minoNumber <= 4; minoNumber++) {
+      eval(`tetrisBoards.get("tetrisGame0").minos.push(new Mino(activeTetromino.row${minoNumber}, activeTetromino.column${minoNumber}, activeTetromino.color))`);
+    }
+    activeTetromino.isActive = false;
+    hardDrop = false;
+    canHold = true;
+
+    clearLines();
+  }
+  blockUnder = false;
+}
+
+function updatePosition(secondCheck) {
+  if (activeTetromino.row1 >= 0 &&
+    activeTetromino.row2 >= 0 &&
+    activeTetromino.row3 >= 0 &&
+    activeTetromino.row4 >= 0 && !secondCheck) {
+    fill(activeTetromino.color);
+    for (let columnRow of [[activeTetromino.column1, activeTetromino.row1], [activeTetromino.column2, activeTetromino.row2], [activeTetromino.column3, activeTetromino.row3], [activeTetromino.column4, activeTetromino.row4]]) {
+      rect(columnRow[0] * (tetrisBoards.get("tetrisGame0").x2 - tetrisBoards.get("tetrisGame0").x1)/columnLines + tetrisBoards.get("tetrisGame0").x1,
+        columnRow[1] * (tetrisBoards.get("tetrisGame0").y2 - tetrisBoards.get("tetrisGame0").y1)/rowLines + tetrisBoards.get("tetrisGame0").y1, 
+        (tetrisBoards.get("tetrisGame0").x2 - tetrisBoards.get("tetrisGame0").x1)/columnLines,
+        (tetrisBoards.get("tetrisGame0").y2 - tetrisBoards.get("tetrisGame0").y1)/rowLines);
+    }
+  }
+  
+  if ((timer - lastUpdate >= (0.8 - (level - 1) * 0.007)**(level - 1) * 1000 || softDrop && timer - lastUpdate >= softDropSpeed) && hardDrop !== "movePiece") {
+    moveActiveDownSlowly();
+  }
+  if (hardDrop === "movePiece") {
+    let spacesToDrop = 0;
+    while (activeTetromino.row1 + spacesToDrop < rowLines &&
+      activeTetromino.row2 + spacesToDrop < rowLines &&
+      activeTetromino.row3 + spacesToDrop < rowLines &&
+      activeTetromino.row4 + spacesToDrop < rowLines &&
+      safeToDrop) {
+      spacesToDrop++;
+      for (let minoToCheck of tetrisBoards.get("tetrisGame0").minos) {
+        if (minoToCheck.row === activeTetromino.row1 + spacesToDrop && minoToCheck.column === activeTetromino.column1 || 
+          minoToCheck.row === activeTetromino.row2 + spacesToDrop && minoToCheck.column === activeTetromino.column2 ||
+          minoToCheck.row === activeTetromino.row3 + spacesToDrop && minoToCheck.column === activeTetromino.column3 || 
+          minoToCheck.row === activeTetromino.row4 + spacesToDrop && minoToCheck.column === activeTetromino.column4) {
+          safeToDrop = false;
+        }
+      }
+    }
+    activeTetromino.row1+= spacesToDrop - 1;
+    activeTetromino.row2+= spacesToDrop - 1;
+    activeTetromino.row3+= spacesToDrop - 1;
+    activeTetromino.row4+= spacesToDrop - 1;
+    score += (spacesToDrop - 1) * 2;
+    hardDrop = true;
+    safeToDrop = true;
+    lastUpdate = 0;
+  }
+}
+
+function moveActiveTetromino() {
+  if (activeTetromino.isActive) {
+    updatePosition();
+    entryDelayStart = timer;
+  }
+  else {
+    if (timer - entryDelayStart >= entryDelay) {
+      grabNextFromBag();
+      entryDelayStart = timer;
+    }
+  }
+  if (bag.length < 7) {
+    fillBag();
+  }
 }
 
 function draw() {
@@ -1066,22 +1353,6 @@ function swap() {
   windowResized();
 }
 
-function moveActiveTetromino() {
-  if (activeTetromino.isActive) {
-    updatePosition();
-    entryDelayStart = timer;
-  }
-  else {
-    if (timer - entryDelayStart >= entryDelay) {
-      grabNextFromBag();
-      entryDelayStart = timer;
-    }
-  }
-  if (bag.length < 7) {
-    fillBag();
-  }
-}
-
 function grabNextFromBag() {
   if (whatIsInTheBag(0) === "swap") {
     swap();
@@ -1091,238 +1362,6 @@ function grabNextFromBag() {
   }
 
   bag.shift();
-}
-
-function hold() {
-  if ((keyIsDown(SHIFT) || keyIsDown(KEY_C)) && canHold) {
-    if (heldPiece) {
-      bag.unshift(heldPiece);
-    }
-    
-    for(let [color, pieceName] of [["cyan", 2], ["blue", 3], ["orange", 4], ["yellow", 5], ["green", 6], ["red", 7], ["purple", 8]]) {
-      if (activeTetromino.color === color) {
-        heldPiece = pieceName;
-      }
-    }
-    
-    activeTetromino.isActive = false;
-    canHold = false;
-  }
-}
-
-function clearLines() {
-  let linesCleared = 0;
-  let minosInRow = countMinosInRow();
-  
-  while([...minosInRow.values()].some(value => value >= columnLines)) {
-    for (let [rowToCheck, amountInRow] of minosInRow) {
-      if (amountInRow >= columnLines) {
-        for (let currentMino = tetrisBoards.get("tetrisGame0").minos.length - 1; currentMino >= 0; currentMino--) {
-          tetrisBoards.get("tetrisGame0").minos[currentMino].lineCleared(rowToCheck, currentMino);
-        }
-        linesCleared++;
-        break;
-      }
-    }
-    minosInRow = countMinosInRow();
-  }
-
-  if (activeTetromino.color === "purple") {
-    for (let currentMino of tetrisBoards.get("tetrisGame0").minos) {
-      currentMino.neighborT();
-    }
-
-    if (isRotation(3, 2) && (activeTetromino.rotation - 1) * 4.5 === activeTetromino.column1) {
-      activeTetromino.rearCornerNeighbors++;
-    }
-  }
-
-  if (linesCleared) {
-    scoreClearLines(linesCleared);
-  }
-
-  else {
-    if (tSpin()) {
-      score += 400 * level;
-    }
-    
-    else if (miniTSpin()) {
-      score += 100 * level;
-    }
-
-    else {
-      difficultClear = false;
-    }
-
-    comboCounter = -1;
-    justTetrised = false;
-  }
-
-  totalLinesCleared += linesCleared;
-  if (totalLinesCleared >= 10 * level) {
-    level++;
-  }
-}
-
-function scoreClearLines(linesCleared) {
-  let multiplier = 1;
-
-  if (difficultClear) {
-    let multiplier = 1.5;
-  }
-
-  if (linesCleared === 1) {
-    scoreClearTSpins(800, 200, 100, multiplier);
-    if (tetrisBoards.get("tetrisGame0").minos.length === 0) {
-      score += 800 * level;
-    }
-  }
-  
-  else if (linesCleared === 2) {
-    scoreClearTSpins(1200, 400, 300, multiplier);
-    if (tetrisBoards.get("tetrisGame0").minos.length === 0) {
-      score += 1200 * level;
-    }
-  }
-
-  else if (linesCleared === 3) {
-    scoreClearTSpins(1600, 0, 500, multiplier);
-    if (tetrisBoards.get("tetrisGame0").minos.length === 0) {
-      score += 1800 * level;
-    }
-  }
-
-  if (linesCleared === 4) {
-    score += 800 * level * multiplier;
-    difficultClear = true;
-    if (tetrisBoards.get("tetrisGame0").minos.length === 0) {
-      score += (2000 + 1200 * justTetrised) * level;
-    }
-    justTetrised = true;
-  }
-  
-  else {
-    justTetrised = false;
-  }
-
-  comboCounter++;
-  score += 50 * comboCounter * level;
-}
-
-function scoreClearTSpins(tSpinScore, miniScore, defaultScore, multiplier) {
-  if (activeTetromino.color === "purple" && (tSpin() || miniTSpin())) {
-    if (tSpin()) {
-      score += tSpinScore * level * multiplier;
-      difficultClear = true;
-    }
-
-    else if (miniTSpin()) {
-      score += miniScore * level * multiplier;
-      difficultClear = true;
-    }
-  }
-  
-  else {
-    score += defaultScore * level;
-    difficultClear = false;
-  }
-}
-
-function countMinosInRow() {
-  let minosInRow = new Map();
-  for (let currentMino of tetrisBoards.get("tetrisGame0").minos) {
-    if (minosInRow.has(currentMino.row)) {
-      minosInRow.set(currentMino.row, minosInRow.get(currentMino.row) + 1);
-    }
-    else {
-      minosInRow.set(currentMino.row, 1);
-    }
-  }
-  return minosInRow;
-}
-
-function updatePosition(secondCheck) {
-  if (activeTetromino.row1 >= 0 &&
-    activeTetromino.row2 >= 0 &&
-    activeTetromino.row3 >= 0 &&
-    activeTetromino.row4 >= 0 && !secondCheck) {
-    fill(activeTetromino.color);
-    for (let columnRow of [[activeTetromino.column1, activeTetromino.row1], [activeTetromino.column2, activeTetromino.row2], [activeTetromino.column3, activeTetromino.row3], [activeTetromino.column4, activeTetromino.row4]]) {
-      rect(columnRow[0] * (tetrisBoards.get("tetrisGame0").x2 - tetrisBoards.get("tetrisGame0").x1)/columnLines + tetrisBoards.get("tetrisGame0").x1,
-        columnRow[1] * (tetrisBoards.get("tetrisGame0").y2 - tetrisBoards.get("tetrisGame0").y1)/rowLines + tetrisBoards.get("tetrisGame0").y1, 
-        (tetrisBoards.get("tetrisGame0").x2 - tetrisBoards.get("tetrisGame0").x1)/columnLines,
-        (tetrisBoards.get("tetrisGame0").y2 - tetrisBoards.get("tetrisGame0").y1)/rowLines);
-    }
-  }
-  
-  if ((timer - lastUpdate >= (0.8 - (level - 1) * 0.007)**(level - 1) * 1000 || softDrop && timer - lastUpdate >= softDropSpeed) && hardDrop !== "movePiece") {
-    moveActiveDownSlowly();
-  }
-  if (hardDrop === "movePiece") {
-    let spacesToDrop = 0;
-    while (activeTetromino.row1 + spacesToDrop < rowLines &&
-      activeTetromino.row2 + spacesToDrop < rowLines &&
-      activeTetromino.row3 + spacesToDrop < rowLines &&
-      activeTetromino.row4 + spacesToDrop < rowLines &&
-      safeToDrop) {
-      spacesToDrop++;
-      for (let minoToCheck of tetrisBoards.get("tetrisGame0").minos) {
-        if (minoToCheck.row === activeTetromino.row1 + spacesToDrop && minoToCheck.column === activeTetromino.column1 || 
-          minoToCheck.row === activeTetromino.row2 + spacesToDrop && minoToCheck.column === activeTetromino.column2 ||
-          minoToCheck.row === activeTetromino.row3 + spacesToDrop && minoToCheck.column === activeTetromino.column3 || 
-          minoToCheck.row === activeTetromino.row4 + spacesToDrop && minoToCheck.column === activeTetromino.column4) {
-          safeToDrop = false;
-        }
-      }
-    }
-    activeTetromino.row1+= spacesToDrop - 1;
-    activeTetromino.row2+= spacesToDrop - 1;
-    activeTetromino.row3+= spacesToDrop - 1;
-    activeTetromino.row4+= spacesToDrop - 1;
-    score += (spacesToDrop - 1) * 2;
-    hardDrop = true;
-    safeToDrop = true;
-    lastUpdate = 0;
-  }
-}
-
-function moveActiveDownSlowly() {
-  for (let minoToCheck of tetrisBoards.get("tetrisGame0").minos) {
-    let isBelow = (currentMino) => minoToCheck.row === eval("activeTetromino.row" + currentMino) + 1 &&
-    minoToCheck.column === eval("activeTetromino.column" + currentMino);
-
-    if (isBelow("1") || isBelow("2") || isBelow("3") || isBelow("4")) {
-      blockUnder = true;
-    }
-  }
-
-  const notBottom = (currentRow) => currentRow + 1 < rowLines;
-  if (notBottom(activeTetromino.row1) && notBottom(activeTetromino.row2) && notBottom(activeTetromino.row3)
-    && notBottom(activeTetromino.row4) && ! blockUnder) {
-    goDownAndScore();
-  }
-
-  else if (timer - lastUpdate >= lockDelay) {
-    for (let minoNumber = 1; minoNumber <= 4; minoNumber++) {
-      eval(`tetrisBoards.get("tetrisGame0").minos.push(new Mino(activeTetromino.row${minoNumber}, activeTetromino.column${minoNumber}, activeTetromino.color))`);
-    }
-    activeTetromino.isActive = false;
-    hardDrop = false;
-    canHold = true;
-
-    clearLines();
-  }
-  blockUnder = false;
-}
-
-function goDownAndScore() {
-  shiftActiveTetromino({rowChange1: 1});
-  lastUpdate = timer;
-  activeTetromino.rotatedLast = false;
-
-  if (softDrop) {
-    score++;
-  }
 }
 
 function keyPressed() {
