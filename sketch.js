@@ -1102,7 +1102,7 @@ function addLineClearScore(tSpinScore, defaultScore, multiplier, miniScore = 0) 
     }
   }
   
-  // Otherwise, just add the default score multiplied by the level and not a difficult clear.
+  // Otherwise, just add the default score multiplied by the level and mark it as not a difficult clear.
   score += defaultScore * level;
   difficultClear = false;
 }
