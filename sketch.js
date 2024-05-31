@@ -41,6 +41,15 @@ let rightDidDAS = false;
 let uIScale = 1377/1900;
 let nextPieces = 7;
 let softDropScore = 1;
+let difficultClearMultiplier = 1.5;
+let baseTetrisScore = 800;
+let basePCTetrisScore = 2000;
+let baseBTBPCTetrisScore = 1200;
+let baseLineTSScore = 800;
+let baseLineScore = 100;
+let baseLineMTSScore = 200;
+let basePCScore = 800;
+let baseComboBonus = 50;
 
 // How many frames it should take for the AS to move the active mino at 60FPS.
 let aSUpdateDelay = 2;
@@ -1072,91 +1081,99 @@ function countMinosInRow() {
 }
 
 /**
- * Adds the score for clearing lines.
+ * Only adds the score for clearing lines.
  * @param {number} tSpinScore - The score to add if the line(s) was cleared with a t-spin.
  * @param {number} defaultScore - The score to add if the line(s) was cleared regularly.
  * @param {number} multiplier - How much to multiply the score to be added by.
- * @param {number} [miniScore] - The score to add if the line(s) were cleared with a mini-t-spin, optional. 
+ * @param {number} [miniScore] - The score to add if the line(s) were cleared with a mini-t-spin, optional.
  */
 function addLineClearScore(tSpinScore, defaultScore, multiplier, miniScore = 0) {
-  // Checks if the active tetromino is a T.
-  if (activeTetromino.pieceName === T) {
-    // Checks if a t-spin was performed.
-    if (tSpin()) {
-      // Adds the t-spin score multiplied by the level and the multiplier.
-      score += tSpinScore * level * multiplier;
+  // Checks if a t-spin was performed.
+  if (tSpin()) {
+    // Adds the t-spin score multiplied by the level and the multiplier.
+    score += tSpinScore * level * multiplier;
 
-      // Marks it as a difficult clear and ends the function.
-      difficultClear = true;
-      return;
-    }
+    // Marks it as a difficult clear and ends the function.
+    difficultClear = true;
+    return;
+  }
 
-    // Checks if a mini-t-spin was performed instead.
-    else if (miniTSpin()) {
-      // Adds the mini-t-spin score multiplied by the level and the multiplier.
-      score += miniScore * level * multiplier;
+  // Checks if a mini-t-spin was performed instead.
+  else if (miniTSpin()) {
+    // Adds the mini-t-spin score multiplied by the level and the multiplier.
+    score += miniScore * level * multiplier;
 
-      // Marks it as a difficult clear and ends the function.
-      difficultClear = true;
-      return;
-    }
+    // Marks it as a difficult clear and ends the function.
+    difficultClear = true;
+    return;
   }
   
-  // Otherwise, just add the default score multiplied by the level and mark it as not a difficult clear.
+  
+  // Otherwise, add the default score multiplied by the level, marking it as not a difficult clear.
   score += defaultScore * level;
   difficultClear = false;
 }
 
+/**
+ * Adds the score for clearing lines, perfect clears, back-to-back tetrises/difficult clears, and combos.
+ * @param {number} linesCleared - The amount of lines cleared. 
+ */
 function scoreClearLines(linesCleared) {
   let multiplier = 1;
 
+  // If the last action was a "difficult" clear, adds a multiplier to the score of this one if also difficult.
   if (difficultClear) {
-    multiplier = 1.5;
+    multiplier = difficultClearMultiplier;
   }
 
+  // Handles the score gained by tetrises.
   if (linesCleared === 4) {
-    score += 800 * level * multiplier;
-    difficultClear = true;
+    // Adds the score from the tetris multiplied by the level and multiplier.
+    score += baseTetrisScore * level * multiplier;
+
+    // Checks if this was a perfect clear.
     if (tetrisBoards.get("tetrisGame0").minos.length === 0) {
-      score += (2000 + 1200 * justTetrised) * level;
+      // Adds base score with score if the last action was also a tetris multiplied by the level and multiplier.
+      score += (basePCTetrisScore + baseBTBPCTetrisScore * justTetrised) * level * multiplier;
     }
+
+    // Marks this action as "difficult" and that it was a tetris.
+    difficultClear = true;
     justTetrised = true;
   }
-  
+
+  // Handles the score from clearing 1-3 lines.
   else {
-    justTetrised = false;
-    addLineClearScore(400 + 400*linesCleared, -100 + 200*linesCleared, multiplier, 200*linesCleared);
+    addLineClearScore(baseLineTSScore + 400*(linesCleared - 1), baseLineScore + 200*(linesCleared - 1), multiplier,
+      baseLineMTSScore + 200*(linesCleared - 1));
+
+    // Checks if this was a perfect clear.
     if (tetrisBoards.get("tetrisGame0").minos.length === 0) {
-      score += 800 + 400*(linesCleared - 1) + 100*(linesCleared - 1)*(linesCleared - 2);
+      // Adds the base score for the amount of lines multiplied by the level.
+      score += (basePCScore + 400*(linesCleared - 1) + 100*(linesCleared - 1)*(linesCleared - 2)) * level;
     }
+
+    // Mark this action as not resulting in a tetris.
+    justTetrised = false;
   }
 
+  // Increments the combo counter and adds the base bonus multiplied by the counter and the level.
   comboCounter++;
-  score += 50 * comboCounter * level;
+  score += baseComboBonus * comboCounter * level;
 }
 
-function clearLines() {
-  let linesCleared = 0;
-  let minosInRow = countMinosInRow();
-  
-  while([...minosInRow.values()].some(value => value >= columnLines)) {
-    for (let [rowToCheck, amountInRow] of minosInRow) {
-      if (amountInRow >= columnLines) {
-        for (let currentMino = tetrisBoards.get("tetrisGame0").minos.length - 1; currentMino >= 0; currentMino--) {
-          tetrisBoards.get("tetrisGame0").minos[currentMino].lineCleared(rowToCheck, currentMino);
-        }
-        linesCleared++;
-        break;
-      }
-    }
-    minosInRow = countMinosInRow();
-  }
-
+/**
+ * Adds all the score gained after locking-in a tetromino.
+ * @param {number} linesCleared - How many lines were cleared, if any. 
+ */
+function addTurnEndScore(linesCleared) {
   if (activeTetromino.pieceName === T) {
+    // Loops through every mino and counts the minos used to determine t-spins, both mini and regular.
     for (let currentMino of tetrisBoards.get("tetrisGame0").minos) {
       currentMino.neighborT();
     }
 
+    // Checks if the t is up against a wall, counting the wall as minos on it's rear.
     if (isRotation(3, 2) && (activeTetromino.rotation - 1) * 4.5 === activeTetromino.column1) {
       activeTetromino.rearCornerNeighbors++;
     }
@@ -1182,8 +1199,30 @@ function clearLines() {
     comboCounter = -1;
     justTetrised = false;
   }
+}
 
+function clearLines() {
+  let linesCleared = 0;
+  let minosInRow = countMinosInRow();
+  
+  while([...minosInRow.values()].some(value => value >= columnLines)) {
+    for (let [rowToCheck, amountInRow] of minosInRow) {
+      if (amountInRow >= columnLines) {
+        for (let currentMino = tetrisBoards.get("tetrisGame0").minos.length - 1; currentMino >= 0; currentMino--) {
+          tetrisBoards.get("tetrisGame0").minos[currentMino].lineCleared(rowToCheck, currentMino);
+        }
+
+        linesCleared++;
+        break;
+      }
+    }
+ 
+    minosInRow = countMinosInRow();
+  }
+
+  addTurnEndScore(linesCleared);
   totalLinesCleared += linesCleared;
+  
   if (totalLinesCleared >= 10 * level) {
     level++;
   }
