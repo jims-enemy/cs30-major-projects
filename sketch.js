@@ -50,6 +50,8 @@ let baseLineScore = 100;
 let baseLineMTSScore = 200;
 let basePCScore = 800;
 let baseComboBonus = 50;
+let baseTSpinScore = 400;
+let baseMiniTSpinScore = 100;
 
 // How many frames it should take for the AS to move the active mino at 60FPS.
 let aSUpdateDelay = 2;
@@ -301,11 +303,11 @@ class Mino {
   }
 
   /**
-   * Checks if this mino collides with the active tetromino after moving across columns.
+   * Checks if this mino collides with the active tetromino after moving.
    * @param {number} shift - How many columns the active tetromino is trying to move.
    * @returns {boolean} If it is safe to move the tetromino.
    */
-  collidesWithActive(shift) {
+  collidesWithActive({columnShift = 0, rowShift = 0} = {}) {
     for(let minoNumber of [1, 2, 3, 4]) {
       if (eval(`this.column === activeTetromino.column${minoNumber} + ${shift}
       && this.row === activeTetromino.row${minoNumber}`)) {
@@ -573,6 +575,24 @@ class TetrisBoard {
     // Loops through every mino of the held tetromino, adding it to the UI.
     for (let minoNumber = 1; minoNumber <= 4; minoNumber++) {
       eval(`this.minos.push(new Mino(whatIsInTheBag(0, true).row${minoNumber} + rowOffset, whatIsInTheBag(0, true).column${minoNumber} + columnOffset, whatIsInTheBag(0, true).color))`);
+    }
+  }
+
+  /**
+   * Displays the currently active piece.
+   */
+  drawActivePiece() {
+    // Checks if the entire tetromino is visible.
+    if (activeTetromino.row1 >= 0 && activeTetromino.row2 >= 0 && activeTetromino.row3 >= 0 &&
+      activeTetromino.row4 >= 0) {
+      fill(activeTetromino.color);
+
+      // Loops through every mino of the active tetromino, drawing it.
+      for (let minoNumber of [1, 2, 3, 4]) {
+        rect(eval(`activeTetromino.column${minoNumber}`) * (this.x2 - this.x1)/columnLines + this.x1,
+          eval(`activeTetromino.row${minoNumber}`) * (this.y2 - this.y1)/rowLines + this.y1, 
+          (this.x2 - this.x1)/columnLines, (this.y2 - this.y1)/rowLines);
+      }
     }
   }
 }
@@ -1174,8 +1194,8 @@ function addTurnEndScore(linesCleared) {
     }
 
     // Checks if the t is up against a wall, counting the wall as minos on it's rear.
-    if (isRotation(3, 2) && (activeTetromino.rotation - 1) * 4.5 === activeTetromino.column1) {
-      activeTetromino.rearCornerNeighbors++;
+    if (isRotation(3, 2) && (activeTetromino.rotation - 1) * (columnLines - 1)/2 === activeTetromino.column1) {
+      activeTetromino.rearCornerNeighbors = 3;
     }
   }
 
@@ -1184,113 +1204,146 @@ function addTurnEndScore(linesCleared) {
   }
 
   else {
+    // If there was a t-spin, add base score multiplied by the level not altering if it was a difficult line clear.
     if (tSpin()) {
-      score += 400 * level;
+      score += baseTSpinScore * level;
     }
     
+    // Otherwise, if it was a mini-t-spin, do the same but with it's base score.
     else if (miniTSpin()) {
-      score += 100 * level;
+      score += baseMiniTSpinScore * level;
     }
 
+    // Otherwise, mark this as not a difficult line clear.
     else {
       difficultClear = false;
     }
 
+    // Reset the combo counter and mark this as not a tetris.
     comboCounter = -1;
     justTetrised = false;
   }
 }
 
+/**
+ * Clears lines if needed and updates score/level.
+ */
 function clearLines() {
   let linesCleared = 0;
   let minosInRow = countMinosInRow();
   
+  // Loops until there are no full rows.
   while([...minosInRow.values()].some(value => value >= columnLines)) {
+    // Loops through every row and the amount in them.
     for (let [rowToCheck, amountInRow] of minosInRow) {
+      // If current row is full loop through every mino, removing them, dropping them, or doing nothing with them.
       if (amountInRow >= columnLines) {
         for (let currentMino = tetrisBoards.get("tetrisGame0").minos.length - 1; currentMino >= 0; currentMino--) {
           tetrisBoards.get("tetrisGame0").minos[currentMino].lineCleared(rowToCheck, currentMino);
         }
 
+        // Increment the amount of lines cleared and stop looping through the rows.
         linesCleared++;
         break;
       }
     }
  
+    // Updates to the new amount of minos in every row.
     minosInRow = countMinosInRow();
   }
 
   addTurnEndScore(linesCleared);
   totalLinesCleared += linesCleared;
-  
+
+  // Goes to the next level if the amount of lines cleared is bigger than 10 of the current level.
   if (totalLinesCleared >= 10 * level) {
     level++;
   }
 }
 
+/**
+ * Moves the active tetromino down on a timer.
+ */
 function moveActiveDownSlowly() {
+  // Loops through every mino.
   for (let minoToCheck of tetrisBoards.get("tetrisGame0").minos) {
+    /**
+     * Checks if this mino is below one of the active tetromino's minos.
+     * @param {number} currentMino - Which mino to check on the active tetromino. 
+     * @returns {boolean} - If it is or isn't underneath.
+     */
     let isBelow = (currentMino) => minoToCheck.row === eval("activeTetromino.row" + currentMino) + 1 &&
     minoToCheck.column === eval("activeTetromino.column" + currentMino);
 
-    if (isBelow("1") || isBelow("2") || isBelow("3") || isBelow("4")) {
+    // If this mino is directly underneath, mark it down and end the loop.
+    if (isBelow(1) || isBelow(2) || isBelow(3) || isBelow(4)) {
       blockUnder = true;
+      break;
     }
   }
 
-  const notBottom = (currentRow) => currentRow + 1 < rowLines;
-  if (notBottom(activeTetromino.row1) && notBottom(activeTetromino.row2) && notBottom(activeTetromino.row3)
-    && notBottom(activeTetromino.row4) && ! blockUnder) {
+  /**
+   * Checks if a mino of the active tetromino is touching the bottom. 
+   * @param {number} currentRow - The mino to check.
+   * @returns {boolean} Whether or not it is at the bottom.
+   */
+  const notBottom = (currentRow) => eval(`activeTetromino.row${currentRow}`) + 1 < rowLines;
+
+  // If there is space underneath, move the tetromino down.
+  if (notBottom(1) && notBottom(2) && notBottom(3) && notBottom(4) && ! blockUnder) {
     goDownAndScore();
   }
 
+  // Otherwise, waits for the lock delay.
   else if (timer - lastUpdate >= lockDelay) {
+    // Loops through every active mino, pushing it onto the board.
     for (let minoNumber = 1; minoNumber <= 4; minoNumber++) {
-      eval(`tetrisBoards.get("tetrisGame0").minos.push(new Mino(activeTetromino.row${minoNumber}, activeTetromino.column${minoNumber}, activeTetromino.color))`);
+      eval(`tetrisBoards.get("tetrisGame0").minos.push(new Mino(activeTetromino.row${minoNumber},
+        activeTetromino.column${minoNumber}, activeTetromino.color))`);
     }
+
+    // Disable the active tetromino, stops hard dropping if occuring, and enables holding.
     activeTetromino.isActive = false;
     hardDrop = false;
     canHold = true;
 
     clearLines();
   }
+
   blockUnder = false;
 }
 
-function updatePosition(secondCheck) {
-  if (activeTetromino.row1 >= 0 &&
-    activeTetromino.row2 >= 0 &&
-    activeTetromino.row3 >= 0 &&
-    activeTetromino.row4 >= 0 && !secondCheck) {
-    fill(activeTetromino.color);
-    for (let columnRow of [[activeTetromino.column1, activeTetromino.row1], [activeTetromino.column2, activeTetromino.row2], [activeTetromino.column3, activeTetromino.row3], [activeTetromino.column4, activeTetromino.row4]]) {
-      rect(columnRow[0] * (tetrisBoards.get("tetrisGame0").x2 - tetrisBoards.get("tetrisGame0").x1)/columnLines + tetrisBoards.get("tetrisGame0").x1,
-        columnRow[1] * (tetrisBoards.get("tetrisGame0").y2 - tetrisBoards.get("tetrisGame0").y1)/rowLines + tetrisBoards.get("tetrisGame0").y1, 
-        (tetrisBoards.get("tetrisGame0").x2 - tetrisBoards.get("tetrisGame0").x1)/columnLines,
-        (tetrisBoards.get("tetrisGame0").y2 - tetrisBoards.get("tetrisGame0").y1)/rowLines);
-    }
-  }
+function updatePosition() {
+
+  tetrisBoards.get("tetrisGame0").drawActivePiece();
   
-  if ((timer - lastUpdate >= (0.8 - (level - 1) * 0.007)**(level - 1) * 1000 || softDrop && timer - lastUpdate >= softDropSpeed) && hardDrop !== "movePiece") {
+  if ((timer - lastUpdate >= (0.8 - (level - 1) * 0.007)**(level - 1) * 1000 ||
+  softDrop && timer - lastUpdate >= softDropSpeed) && hardDrop !== "movePiece") {
     moveActiveDownSlowly();
   }
+
   if (hardDrop === "movePiece") {
     let spacesToDrop = 0;
-    while (activeTetromino.row1 + spacesToDrop < rowLines &&
-      activeTetromino.row2 + spacesToDrop < rowLines &&
-      activeTetromino.row3 + spacesToDrop < rowLines &&
-      activeTetromino.row4 + spacesToDrop < rowLines &&
-      safeToDrop) {
+
+    const doesNotEscape = (minoNumber) => eval(`activeTetromino.row${minoNumber}`) + spacesToDrop < rowLines;
+
+    while (doesNotEscape(1) && doesNotEscape(2) && doesNotEscape(3) && doesNotEscape(4) && safeToDrop) {
       spacesToDrop++;
+
       for (let minoToCheck of tetrisBoards.get("tetrisGame0").minos) {
-        if (minoToCheck.row === activeTetromino.row1 + spacesToDrop && minoToCheck.column === activeTetromino.column1 || 
-          minoToCheck.row === activeTetromino.row2 + spacesToDrop && minoToCheck.column === activeTetromino.column2 ||
-          minoToCheck.row === activeTetromino.row3 + spacesToDrop && minoToCheck.column === activeTetromino.column3 || 
-          minoToCheck.row === activeTetromino.row4 + spacesToDrop && minoToCheck.column === activeTetromino.column4) {
+        if (minoToCheck.row === activeTetromino.row1 + spacesToDrop &&
+          minoToCheck.column === activeTetromino.column1 || 
+          minoToCheck.row === activeTetromino.row2 + spacesToDrop &&
+          minoToCheck.column === activeTetromino.column2 ||
+          minoToCheck.row === activeTetromino.row3 + spacesToDrop
+          && minoToCheck.column === activeTetromino.column3 || 
+          minoToCheck.row === activeTetromino.row4 + spacesToDrop
+          && minoToCheck.column === activeTetromino.column4) {
           safeToDrop = false;
         }
       }
     }
+
     activeTetromino.row1+= spacesToDrop - 1;
     activeTetromino.row2+= spacesToDrop - 1;
     activeTetromino.row3+= spacesToDrop - 1;
