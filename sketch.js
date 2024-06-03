@@ -16,7 +16,6 @@ let rightTimeHeld = 0;
 let softDrop = false;
 let softDropSpeed = 25;
 let lockDelay = 500;
-let safeToDrop = true;
 let hardDropped = false;
 let hardDrop = false;
 let rotatedRight = false;
@@ -587,13 +586,21 @@ class TetrisBoard {
     // Checks if the entire tetromino is visible.
     if (activeTetromino.row1 >= 0 && activeTetromino.row2 >= 0 && activeTetromino.row3 >= 0 &&
       activeTetromino.row4 >= 0) {
-      fill(activeTetromino.color);
+      let transparentColor = color(activeTetromino.color);
+      transparentColor.setAlpha(125);
 
       // Loops through every mino of the active tetromino, drawing it.
       for (let minoNumber of [1, 2, 3, 4]) {
+        fill(transparentColor);
+        rect(eval(`activeTetromino.column${minoNumber}`) * (this.x2 - this.x1)/columnLines + this.x1,
+          (eval(`activeTetromino.row${minoNumber}`) + drawGhostPiece() - 1) * (this.y2 - this.y1)/rowLines + this.y1, 
+          (this.x2 - this.x1)/columnLines, (this.y2 - this.y1)/rowLines);
+
+        fill(activeTetromino.color);
         rect(eval(`activeTetromino.column${minoNumber}`) * (this.x2 - this.x1)/columnLines + this.x1,
           eval(`activeTetromino.row${minoNumber}`) * (this.y2 - this.y1)/rowLines + this.y1, 
           (this.x2 - this.x1)/columnLines, (this.y2 - this.y1)/rowLines);
+
       }
     }
   }
@@ -1315,8 +1322,37 @@ function moveActiveDownSlowly() {
   blockUnder = false;
 }
 
+function drawGhostPiece() {
+  let spacesToDrop = 0;
+  let safeToDrop = true;
+
+  /**
+     * Makes sure the active tetromino doesn't go under the board.
+     * @param {number} minoNumber - The number of the mino to check
+     * @returns {boolean} - Whether or not the active tetromino will go under.
+     */
+  const doesNotEscape = (minoNumber) => eval(`activeTetromino.row${minoNumber}`) + spacesToDrop < rowLines;
+
+  // Loops until something is underneath the tetromino.
+  while (doesNotEscape(1) && doesNotEscape(2) && doesNotEscape(3) && doesNotEscape(4) && safeToDrop) {
+    spacesToDrop++;
+
+    // Loops through every mino.
+    for (let minoToCheck of tetrisBoards.get("tetrisGame0").minos) {
+      // Checks if the active tetromino would collide with the current mino.
+      if (minoToCheck.collidesWithActive({rowShift: spacesToDrop})) {
+        safeToDrop = false;
+        break;
+      }
+    }
+  }
+
+  return spacesToDrop;
+}
+
+
 /**
- * Moves the tetromino down either with time or immediately wi th a hard drop.
+ * Moves the tetromino down either with time or immediately with a hard drop.
  */
 function updatePosition() {
   tetrisBoards.get("tetrisGame0").drawActivePiece();
@@ -1329,35 +1365,13 @@ function updatePosition() {
 
   // Checks if hard-dropping.
   if (hardDrop === "movePiece") {
-    let spacesToDrop = 0;
 
-    /**
-     * Makes sure the active tetromino doesn't go under the board.
-     * @param {number} minoNumber - The number of the mino to check
-     * @returns {boolean} - Whether or not the active tetromino will go under.
-     */
-    const doesNotEscape = (minoNumber) => eval(`activeTetromino.row${minoNumber}`) + spacesToDrop < rowLines;
-
-    // Loops until something is underneath the tetromino.
-    while (doesNotEscape(1) && doesNotEscape(2) && doesNotEscape(3) && doesNotEscape(4) && safeToDrop) {
-      spacesToDrop++;
-
-      // Loops through every mino.
-      for (let minoToCheck of tetrisBoards.get("tetrisGame0").minos) {
-        // Checks if the active tetromino would collide with the current mino.
-        if (minoToCheck.collidesWithActive({rowShift: spacesToDrop})) {
-          safeToDrop = false;
-          break;
-        }
-      }
-    }
-
+    let spacesToDrop = drawGhostPiece();
     shiftActiveTetromino({fullShift: true, rowChange1: spacesToDrop - 1});
 
     // Updates the score and resets values.
     score += (spacesToDrop - 1) * 2;
     hardDrop = true;
-    safeToDrop = true;
     lastUpdate = 0;
   }
 }
