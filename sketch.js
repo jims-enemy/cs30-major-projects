@@ -27,7 +27,7 @@ let heldPiece;
 let score = 0;
 let comboCounter = -1;
 let difficultClear = false;
-let gamemode = "PT";
+let gamemode = "MM";
 let timePaused = 0;
 let justTetrised = false;
 let entryDelay = 100;
@@ -51,6 +51,7 @@ let basePCScore = 800;
 let baseComboBonus = 50;
 let baseTSpinScore = 400;
 let baseMiniTSpinScore = 100;
+let menuButtons = 4;
 
 // How many frames it should take for the AS to move the active mino at 60FPS.
 let aSUpdateDelay = 2;
@@ -366,6 +367,38 @@ function whatIsInTheBag(currentIndex, wantHeldPiece) {
 }
 
 /**
+ * Determines how many spaces down the tetromino can safely drop.
+ * @returns {number} - How many minos the tetromino can drop.
+ */
+function drawGhostPiece() {
+  let spacesToDrop = 0;
+  let safeToDrop = true;
+
+  /**
+     * Makes sure the active tetromino doesn't go under the board.
+     * @param {number} minoNumber - The number of the mino to check
+     * @returns {boolean} - Whether or not the active tetromino will go under.
+     */
+  const doesNotEscape = (minoNumber) => eval(`activeTetromino.row${minoNumber}`) + spacesToDrop < rowLines;
+
+  // Loops until something is underneath the tetromino.
+  while (doesNotEscape(1) && doesNotEscape(2) && doesNotEscape(3) && doesNotEscape(4) && safeToDrop) {
+    spacesToDrop++;
+
+    // Loops through every mino.
+    for (let minoToCheck of tetrisBoards.get("tetrisGame0").minos) {
+      // Checks if the active tetromino would collide with the current mino.
+      if (minoToCheck.collidesWithActive({rowShift: spacesToDrop})) {
+        safeToDrop = false;
+        break;
+      }
+    }
+  }
+
+  return spacesToDrop - 1;
+}
+
+/**
  * Either represents a game board or the board used for the UI.
  */
 class TetrisBoard {
@@ -593,7 +626,7 @@ class TetrisBoard {
       for (let minoNumber of [1, 2, 3, 4]) {
         fill(transparentColor);
         rect(eval(`activeTetromino.column${minoNumber}`) * (this.x2 - this.x1)/columnLines + this.x1,
-          (eval(`activeTetromino.row${minoNumber}`) + drawGhostPiece() - 1) * (this.y2 - this.y1)/rowLines + this.y1, 
+          (eval(`activeTetromino.row${minoNumber}`) + drawGhostPiece()) * (this.y2 - this.y1)/rowLines + this.y1, 
           (this.x2 - this.x1)/columnLines, (this.y2 - this.y1)/rowLines);
 
         fill(activeTetromino.color);
@@ -1322,35 +1355,6 @@ function moveActiveDownSlowly() {
   blockUnder = false;
 }
 
-function drawGhostPiece() {
-  let spacesToDrop = 0;
-  let safeToDrop = true;
-
-  /**
-     * Makes sure the active tetromino doesn't go under the board.
-     * @param {number} minoNumber - The number of the mino to check
-     * @returns {boolean} - Whether or not the active tetromino will go under.
-     */
-  const doesNotEscape = (minoNumber) => eval(`activeTetromino.row${minoNumber}`) + spacesToDrop < rowLines;
-
-  // Loops until something is underneath the tetromino.
-  while (doesNotEscape(1) && doesNotEscape(2) && doesNotEscape(3) && doesNotEscape(4) && safeToDrop) {
-    spacesToDrop++;
-
-    // Loops through every mino.
-    for (let minoToCheck of tetrisBoards.get("tetrisGame0").minos) {
-      // Checks if the active tetromino would collide with the current mino.
-      if (minoToCheck.collidesWithActive({rowShift: spacesToDrop})) {
-        safeToDrop = false;
-        break;
-      }
-    }
-  }
-
-  return spacesToDrop;
-}
-
-
 /**
  * Moves the tetromino down either with time or immediately with a hard drop.
  */
@@ -1367,7 +1371,7 @@ function updatePosition() {
   if (hardDrop === "movePiece") {
 
     let spacesToDrop = drawGhostPiece();
-    shiftActiveTetromino({fullShift: true, rowChange1: spacesToDrop - 1});
+    shiftActiveTetromino({fullShift: true, rowChange1: spacesToDrop});
 
     // Updates the score and resets values.
     score += (spacesToDrop - 1) * 2;
@@ -1473,34 +1477,61 @@ function moveActiveTetromino() {
   }
 }
 
+function drawMainMenu() {
+  fill("white");
+
+  for (let currentButton = 0; currentButton < menuButtons; currentButton++) {
+    rect(width/3, height*currentButton/menuButtons + height/menuButtons/4, width/3, height/menuButtons/2);
+  }
+
+  fill("black");
+  textAlign(CENTER, CENTER);
+
+  if (74/667 * height < 51/640 * width) {
+    textSize(74/667 * height);
+  }
+
+  else {
+    textSize(51/640 * width);
+  }
+  text("OPTIONS", width/2, height*5/2/menuButtons); //102/1280 x 74/667
+}
+
 function draw() {
   background("black");
 
+  // Draw everything related to gameplay when not on the main menu.
+  if (gamemode !== "MM") {
   // Draws each game.
-  for(let gameNumber = 0; gameNumber < games; gameNumber++) {
-    tetrisBoards.get(`tetrisGame${gameNumber}`).display({gameNumber: gameNumber});
+    for(let gameNumber = 0; gameNumber < games; gameNumber++) {
+      tetrisBoards.get(`tetrisGame${gameNumber}`).display({gameNumber: gameNumber});
+    }
+
+    tetrisBoards.get("nextPiece").display({drawGrid: false});
+
+    // If the game is being played, run the associated functions.
+    if (gamemode === "PT") {
+      timer = millis() - timePaused;
+      controlTetris();
+      moveActiveTetromino();
+    }
+
+    // Otherwise, just update the amount of time paused to not break timings of things when unpaused.
+    else {
+      timePaused = millis() - timer;
+    }
+
+    tetrisBoards.get("nextPiece").updateMinoUIElements();
   }
 
-  tetrisBoards.get("nextPiece").display({drawGrid: false});
-
-  // If the game is being played, run the associated functions.
-  if (gamemode === "PT") {
-    timer = millis() - timePaused;
-    controlTetris();
-    moveActiveTetromino();
-  }
-
-  // Otherwise, just update the amount of time paused to not break timings of things when unpaused.
   else {
-    timePaused = millis() - timer;
+    drawMainMenu();
   }
-
-  tetrisBoards.get("nextPiece").updateMinoUIElements();
 }
 
 function keyPressed() {
   // Upon pressing p, either pause or unpause the game.
-  if (key === "p") {
+  if (key === "p" && gamemode !== "MM") {
     if (gamemode === "PT") {
       gamemode = "TM";
     }
