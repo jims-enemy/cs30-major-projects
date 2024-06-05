@@ -51,11 +51,12 @@ let basePCScore = 800;
 let baseComboBonus = 50;
 let baseTSpinScore = 400;
 let baseMiniTSpinScore = 100;
-let menuButtons = 4;
+let menuButtons = [];
+let amountOfMenuButtons = 4;
+let availableChoices = [1, 2, 3, 4, 5, 6, 7, 8];
 
 // How many frames it should take for the AS to move the active mino at 60FPS.
 let aSUpdateDelay = 2;
-
 
 const SWAP = 1;
 const I = 2;
@@ -317,6 +318,46 @@ class Mino {
       }
     }
     return false;
+  }
+}
+
+function startTetris() {
+  availableChoices.shift();
+  bag = [];
+  gamemode = "PT";
+}
+
+class Button {
+  constructor(text, buttonNumber, textWidthScale, onClick) {
+    this.text = text;
+    this.buttonNumber = buttonNumber;
+    this.textWidthScale = textWidthScale;
+    this.onClick = onClick;
+    this.y1 = height*(this.buttonNumber - 1)/amountOfMenuButtons + height/amountOfMenuButtons/4;
+  }
+
+  display() {
+    fill("white");
+    rect(width/3, this.y1, width/3, height/amountOfMenuButtons/2);
+
+    fill("black");
+    textAlign(CENTER, CENTER);
+
+    if (74/667 * height < this.textWidthScale * width) {
+      textSize(74/667 * height);
+    }
+  
+    else {
+      textSize(this.textWidthScale * width);
+    }
+
+    text(this.text, width/2, height*(1 + 2*(this.buttonNumber - 1))/2/amountOfMenuButtons);
+  }
+
+  buttonClicked() {
+    if (mouseY > this.y1 && mouseY < this.y1 + height/amountOfMenuButtons/2) {
+      eval(this.onClick);
+    }
   }
 }
 
@@ -657,17 +698,17 @@ miniTSpin() && activeTetromino.kickTestsTaken === 4;
  */
 function fillBag() {
   let loops = 0;
-  let availableChoices = [1, 2, 3, 4, 5, 6, 7, 8];
+  let remainingChoices = [...availableChoices];
 
   // Loops until bag has been refilled.
-  while(loops < 8) {
+  while(loops < availableChoices.length) {
     // Picks a random choice.
     let choice = Math.floor(random(1, 9));
 
     // If it hasn't been picked yet, add it to the bag, remove it from possible choices, and increment the loop.
-    if (availableChoices.includes(choice)) {
+    if (remainingChoices.includes(choice)) {
       bag.push(choice);
-      availableChoices.splice(availableChoices.indexOf(choice), 1);
+      remainingChoices.splice(remainingChoices.indexOf(choice), 1);
       loops++;
     }
   }
@@ -675,6 +716,14 @@ function fillBag() {
 
 function setup() {
   createCanvas(windowWidth, windowHeight);
+
+  let currentNumber = 0;
+  for (let currentButton of [["PLAY TETRIS", 7/128, "startTetris()"], ["PLAY TETRIS SWAP!", 23/640, ""],
+    ["OPTIONS", 51/640, ""], ["HELP", 171/1280, ""]]) {
+    currentNumber++;
+    menuButtons.push(new Button(currentButton[0], currentNumber, currentButton[1], currentButton[2]));
+  }
+
 
   // Sets the first board's coordinates.
   tetrisBoards.set("tetrisGame0", new TetrisBoard(width/3, 0, width/3 * 2, height));
@@ -1383,6 +1432,13 @@ function updatePosition() {
 function windowResized() {
   resizeCanvas(windowWidth, windowHeight);
 
+  let newButtons = [];
+
+  for (let currentButton of menuButtons) {
+    newButtons.push(new Button(currentButton.text, currentButton.buttonNumber, currentButton.textWidthScale, currentButton.onClick));
+  }
+  menuButtons = newButtons;
+
   // Resets the first board's coordinates.
   tetrisBoards.set("tetrisGame0", new TetrisBoard(width/3, 0, width/3 * 2, height,
     tetrisBoards.get("tetrisGame0").minos));
@@ -1477,26 +1533,6 @@ function moveActiveTetromino() {
   }
 }
 
-function drawMainMenu() {
-  fill("white");
-
-  for (let currentButton = 0; currentButton < menuButtons; currentButton++) {
-    rect(width/3, height*currentButton/menuButtons + height/menuButtons/4, width/3, height/menuButtons/2);
-  }
-
-  fill("black");
-  textAlign(CENTER, CENTER);
-
-  if (74/667 * height < 51/640 * width) {
-    textSize(74/667 * height);
-  }
-
-  else {
-    textSize(51/640 * width);
-  }
-  text("OPTIONS", width/2, height*5/2/menuButtons); //102/1280 x 74/667
-}
-
 function draw() {
   background("black");
 
@@ -1525,7 +1561,9 @@ function draw() {
   }
 
   else {
-    drawMainMenu();
+    for (let currentButton of menuButtons) {
+      currentButton.display();
+    }
   }
 }
 
@@ -1543,8 +1581,17 @@ function keyPressed() {
 }
 
 function mousePressed() {
-  // If the game is paused and the mouse is on the board, toggle the cell the mouse is hovering over.
-  if (gamemode === "TM" && mouseX > width/3 && mouseX < width*2/3) {
-    tetrisBoards.get("tetrisGame0").toggleCell();
+  // Checks if the mouse is in the middle third of the board.
+  if (mouseX > width/3 && mouseX < width*2/3) {
+    // If the game is paused, toggle the cell the mouse is hovering over.
+    if (gamemode === "TM") {
+      tetrisBoards.get("tetrisGame0").toggleCell();
+    }
+
+    else if (gamemode === "MM") {
+      for (let currentButton of menuButtons) {
+        currentButton.buttonClicked();
+      }
+    }
   }
 }
