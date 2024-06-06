@@ -1,7 +1,7 @@
 let columnLines = 10;
 let rowLines = 20;
 let tetrisBoards = new Map();
-let games = 1;
+let games = 3;
 let bag = [];
 let level = 1;
 let timer;
@@ -54,9 +54,27 @@ let baseMiniTSpinScore = 100;
 let menuButtons = [];
 let amountOfMenuButtons = 4;
 let availableChoices = [1, 2, 3, 4, 5, 6, 7, 8];
+let baseTetrisNextPieces = 6;
 
 // How many frames it should take for the AS to move the active mino at 60FPS.
 let aSUpdateDelay = 2;
+
+const HELP_TEXT = "In Tetris, you control falling tetrominoes, \
+which are pieces made up of four squares (called minos), \
+aiming to create complete horizontal lines without gaps.\n\
+These tetrominoes fall one at a time from the top of the vertical rectangular grid.\n\
+You can move the pieces left, right, or down, and rotate them to fit them into place.\n\
+The controls are available in the OPTIONS menu. When you complete a line, it clears, and you earn points.\n\
+As you progress, the game speeds up, increasing the challenge.\n\
+The game ends when the tetrominoes stack up to the top of the board, leaving no room for new pieces to enter.\n\
+\nIn Tetris SWAP!, you play with the same basic mechanics, but with an exciting twist: the \"swap\" action.\n\
+When it switches to the \"swap\" action in the queue, \
+it triggers a swap of your current board with another Tetris board on the left side of the screen.\n\
+This means your board is exchanged with the one closest to the top left of the screen, \
+and you must continue playing on the new board. \n\
+The \"swap\" can happen at any time, adding an extra layer of strategy.\n\
+Your goal remains to clear lines and prevent the tetrominoes from stacking to the top, \
+but now you must adapt to the changing boards as you play.";
 
 const SWAP = 1;
 const I = 2;
@@ -324,16 +342,26 @@ class Mino {
 function startTetris() {
   availableChoices.shift();
   bag = [];
+  uIScale = uIScale * (rowLines/(rowLines - 1))**(nextPieces - baseTetrisNextPieces);
+  nextPieces = baseTetrisNextPieces;
+  games = 1;
+
+  // Sets up the coordinates for the next piece board.
+  tetrisBoards.set("nextPiece", new TetrisBoard(width/3 * 2, height/rowLines,
+    width/3 * 2 + width/3 * uIScale,
+    height/rowLines * (rowLines + 1) * uIScale, tetrisBoards.get("nextPiece").minos));
+
   gamemode = "PT";
 }
 
 class Button {
-  constructor(text, buttonNumber, textWidthScale, onClick) {
+  constructor(text, buttonNumber, textWidthScale, onClick, displayHelpText) {
     this.text = text;
     this.buttonNumber = buttonNumber;
     this.textWidthScale = textWidthScale;
     this.onClick = onClick;
     this.y1 = height*(this.buttonNumber - 1)/amountOfMenuButtons + height/amountOfMenuButtons/4;
+    this.displayHelpText = displayHelpText;
   }
 
   display() {
@@ -352,6 +380,21 @@ class Button {
     }
 
     text(this.text, width/2, height*(1 + 2*(this.buttonNumber - 1))/2/amountOfMenuButtons);
+
+    if (this.displayHelpText) {
+      fill("white");
+      textAlign(LEFT, TOP);
+      
+      if (51/3200 * width < 73/1334 * height) {
+        textSize(51/3200 * width);
+      }
+
+      else {
+        textSize(73/1334 * height);
+      }
+
+      text(HELP_TEXT, 0, 0);
+    }
   }
 
   buttonClicked() {
@@ -542,26 +585,32 @@ class TetrisBoard {
     // Draws NEXT and HOLD at the same size.
     this.resizeText(width/80 * 3 * uIScale);
     text("NEXT", this.x2 + width/(3*rowLines) * 4 * uIScale, this.y1 * uIScale);
-    text("HOLD", this.x2 + width/(3*rowLines) * 4 * uIScale, (this.y2 - height/rowLines * 2) * uIScale);
+    text("HOLD", this.x2 + width/(3*rowLines) * 4 * uIScale,
+      (this.y2 - height/rowLines*2*(8 - nextPieces)) * uIScale);
     
     // Draws SCORE, LEVEL, and LINES at the same size.
     this.resizeText(width/1280 * 27 * (uIScale + 3/20));
-    text("SCORE", this.x2 + width/(3*rowLines) * 4 * uIScale, (this.y2 + height/rowLines) * uIScale);
-    text("LEVEL", this.x2 + width/(3*rowLines) * 4 * uIScale, (this.y2 + height/rowLines * 3) * uIScale);
-    text("LINES", this.x2 + width/(3*rowLines) * 4 * uIScale, (this.y2 + height/rowLines * 5) * uIScale);
+    text("SCORE", this.x2 + width/(3*rowLines) * 4 * uIScale,
+      (this.y2 + height/rowLines * (nextPieces - 6)) * uIScale);
+    text("LEVEL", this.x2 + width/(3*rowLines) * 4 * uIScale,
+      (this.y2 + height/rowLines * (nextPieces - 4)) * uIScale);
+    text("LINES", this.x2 + width/(3*rowLines) * 4 * uIScale,
+      (this.y2 + height/rowLines * (nextPieces - 2)) * uIScale);
 
     // Draws the score number, automatically resizing based on it's length.
     this.resizeText(width/80 * 3/(4 - score.length + 1));
-    text(score, this.x2 + width/(3*rowLines) * 4 * uIScale, (this.y2 + 2 * height/rowLines) * uIScale);
+    text(score, this.x2 + width/(3*rowLines) * 4 * uIScale,
+      (this.y2 + height/rowLines * (nextPieces - 5)) * uIScale);
 
     // Draws the level number, automatically resizing based on it's length.
     this.resizeText(width/80 * 3/(4 - level.length + 1));
-    text(level, this.x2 + width/(3*rowLines) * 4 * uIScale, (this.y2 + 4 * height/rowLines) * uIScale);
+    text(level, this.x2 + width/(3*rowLines) * 4 * uIScale,
+      (this.y2 + height/rowLines * (nextPieces - 3)) * uIScale);
 
     // Draws the amount of lines cleared, automatically resizing based on it's length.
     this.resizeText(width/80 * 3/(4 - totalLinesCleared.length + 1));
     text(totalLinesCleared, this.x2 + width/(3*rowLines) * 4 * uIScale,
-      (this.y2 + 6 * height/rowLines) * uIScale);
+      (this.y2 + height/rowLines * (nextPieces - 1)) * uIScale);
   }
 
   /**
@@ -627,14 +676,14 @@ class TetrisBoard {
 
     this.drawNextPieces();
      
-    // If an I is being held, moves it down 19.5 rows.
+    // If an I is being held, moves it down 12.5 rows added to the amount of next pieces.
     if (heldPiece === I) {
-      rowOffset = 19.5;
+      rowOffset = 12.5 + nextPieces;
     }
     
-    // Otherwise, if any piece is being held, moves it down 19 rows.
+    // Otherwise, if any piece is being held, moves it down 12 rows added to the amount of next pieces.
     else if (heldPiece) {
-      rowOffset = 19;
+      rowOffset = 12 + nextPieces;
     }
 
     // If an I or O is being held, move it 3 columns to the left.
@@ -714,16 +763,25 @@ function fillBag() {
   }
 }
 
-function setup() {
-  createCanvas(windowWidth, windowHeight);
+function helpMenu() {
+  menuButtons = [new Button("RETURN", 4, 27/320, "mainMenuButtons()", true)];
+}
 
+function mainMenuButtons() {
   let currentNumber = 0;
-  for (let currentButton of [["PLAY TETRIS", 7/128, "startTetris()"], ["PLAY TETRIS SWAP!", 23/640, ""],
-    ["OPTIONS", 51/640, ""], ["HELP", 171/1280, ""]]) {
+  menuButtons = [];
+  for (let currentButton of [["PLAY TETRIS", 7/128, "startTetris()"],
+    ["PLAY TETRIS SWAP!", 23/640, "gamemode = \"PT\""], ["OPTIONS", 51/640, ""],
+    ["HELP", 171/1280, "helpMenu()"]]) {
     currentNumber++;
     menuButtons.push(new Button(currentButton[0], currentNumber, currentButton[1], currentButton[2]));
   }
+}
 
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+
+  mainMenuButtons();
 
   // Sets the first board's coordinates.
   tetrisBoards.set("tetrisGame0", new TetrisBoard(width/3, 0, width/3 * 2, height));
@@ -1435,7 +1493,8 @@ function windowResized() {
   let newButtons = [];
 
   for (let currentButton of menuButtons) {
-    newButtons.push(new Button(currentButton.text, currentButton.buttonNumber, currentButton.textWidthScale, currentButton.onClick));
+    newButtons.push(new Button(currentButton.text, currentButton.buttonNumber, currentButton.textWidthScale,
+      currentButton.onClick, currentButton.displayHelpText));
   }
   menuButtons = newButtons;
 
@@ -1528,7 +1587,7 @@ function moveActiveTetromino() {
   }
 
   // Refill the bag if it gets too small.
-  if (bag.length < 7) {
+  if (bag.length < nextPieces) {
     fillBag();
   }
 }
