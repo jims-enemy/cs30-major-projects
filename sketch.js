@@ -62,17 +62,28 @@ let aSUpdateDelay = 2;
 const HELP_TEXT = "In Tetris, you control falling tetrominoes, \
 which are pieces made up of four squares (called minos), \
 aiming to create complete horizontal lines without gaps.\n\
+\
 These tetrominoes fall one at a time from the top of the vertical rectangular grid.\n\
+\
 You can move the pieces left, right, or down, and rotate them to fit them into place.\n\
+\
 The controls are available in the OPTIONS menu. When you complete a line, it clears, and you earn points.\n\
+\
 As you progress, the game speeds up, increasing the challenge.\n\
+\
 The game ends when the tetrominoes stack up to the top of the board, leaving no room for new pieces to enter.\n\
+\
+\
 \nIn Tetris SWAP!, you play with the same basic mechanics, but with an exciting twist: the \"swap\" action.\n\
+\
 When it switches to the \"swap\" action in the queue, \
 it triggers a swap of your current board with another Tetris board on the left side of the screen.\n\
+\
 This means your board is exchanged with the one closest to the top left of the screen, \
 and you must continue playing on the new board. \n\
+\
 The \"swap\" can happen at any time, adding an extra layer of strategy.\n\
+\
 Your goal remains to clear lines and prevent the tetrominoes from stacking to the top, \
 but now you must adapt to the changing boards as you play.";
 
@@ -291,32 +302,32 @@ class Mino {
   }
 
   /**
-   * Checks if this mino is a neighbor of the front corner or rear corners of the active T tetromino.
-   */
+ * Checks if this mino is a neighbor of the front corner or rear corners of the active T tetromino.
+ */
   neighborT() {
 
     /**
-     * Checks if this mino's row/column is some amount of distance away from the sticky-out bit of the t tetromino.
-     * @param {string} rowOrColumn - Either row or column, depending on what you want to check. 
-     * @param {number} [change] - How many rows/columns away it should be (optional, defaults to 0).
-     * @param {string} [secondOperator] - After adding change to the row/column, optionally check another operator. 
-     * @returns {boolean} If it is or isn't that amount of distance away.
-     */
-    const neighbors = (rowOrColumn, change = 0, secondOperator = "-",) => 
-      eval(`this.${rowOrColumn} + ${change} === activeTetromino.${rowOrColumn}2 ||
-    this.${rowOrColumn} ${secondOperator} ${change} === activeTetromino.${rowOrColumn}2`);
+   * Checks if this mino's row/column is some amount of distance away from the sticky-out bit of the t tetromino.
+   * @param {string} rowOrColumn - Either row or column, depending on what you want to check. 
+   * @param {number} [change] - How many rows/columns away it should be (optional, defaults to 0).
+   * @param {string} [secondOperator] - After adding change to the row/column, optionally check another operator. 
+   * @returns {boolean} If it is or isn't that amount of distance away.
+   */
+    const neighbors = (rowOrColumn, change = 0, secondOperator = "-") => 
+      this[rowOrColumn] + change === activeTetromino[`${rowOrColumn}2`] ||
+      (secondOperator === "-" ? this[rowOrColumn] - change === activeTetromino[`${rowOrColumn}2`] : false);
 
     // If it is on the right/left of the sticky-out bit of the t tetromino, increment the amount of front neighbors.
     if (neighbors("row") && neighbors("column", 1) && isRotation(2, 2) ||
-    neighbors("column") && neighbors("row", 1) && isRotation(3, 2)) {
+      neighbors("column") && neighbors("row", 1) && isRotation(3, 2)) {
       activeTetromino.frontCornerNeighbors++;
     }
 
     // If it is directly below the bottom row of the t tetromino, increment the amount of rear neighbors.
     else if (neighbors("row", 2, "+") && neighbors("column", 1) && isRotation(2) || 
-    neighbors("row", -2, "+") && neighbors("column", 1) && isRotation(0) ||
-  neighbors("column", -2, "+") && neighbors("row", 1) && isRotation(3) || 
-  neighbors("column", 2, "+") && neighbors("row", 1) && isRotation(1)) {
+           neighbors("row", -2, "+") && neighbors("column", 1) && isRotation(0) ||
+           neighbors("column", -2, "+") && neighbors("row", 1) && isRotation(3) || 
+           neighbors("column", 2, "+") && neighbors("row", 1) && isRotation(1)) {
       activeTetromino.rearCornerNeighbors++;
     }
   }
@@ -355,18 +366,20 @@ function startTetris() {
 }
 
 class Button {
-  constructor(text, buttonNumber, textWidthScale, onClick, displayHelpText) {
+  constructor(text, rowNumber, textWidthScale, onClick, rectangleX, textX, displayHelpText) {
     this.text = text;
-    this.buttonNumber = buttonNumber;
+    this.rowNumber = rowNumber;
     this.textWidthScale = textWidthScale;
     this.onClick = onClick;
-    this.y1 = height*(this.buttonNumber - 1)/amountOfMenuButtons + height/amountOfMenuButtons/4;
+    this.y1 = height*(this.rowNumber - 1)/amountOfMenuButtons + height/amountOfMenuButtons/4;
     this.displayHelpText = displayHelpText;
+    this.x1 = rectangleX;
+    this.textX = textX;
   }
 
   display() {
     fill("white");
-    rect(width/3, this.y1, width/3, height/amountOfMenuButtons/2);
+    rect(eval(this.x1), this.y1, width/3, height/amountOfMenuButtons/2);
 
     fill("black");
     textAlign(CENTER, CENTER);
@@ -379,7 +392,7 @@ class Button {
       textSize(this.textWidthScale * width);
     }
 
-    text(this.text, width/2, height*(1 + 2*(this.buttonNumber - 1))/2/amountOfMenuButtons);
+    text(this.text, eval(this.textX), height*(1 + 2*(this.rowNumber - 1))/2/amountOfMenuButtons);
 
     if (this.displayHelpText) {
       fill("white");
@@ -763,18 +776,60 @@ function fillBag() {
   }
 }
 
-function helpMenu() {
-  menuButtons = [new Button("RETURN", 4, 27/320, "mainMenuButtons()", true)];
+function subMenu(wantsOptions, wantsControls, wantsGameplay) {
+  if (wantsControls || wantsGameplay) {
+    menuButtons = [new Button("RETURN", 4, 27/320, "subMenu(true)",
+      "width/3", "width/2", false)];
+  }
+
+  else {
+    menuButtons = [new Button("RETURN", 4, 27/320, "mainMenuButtons()",
+      "width/3", "width/2", !wantsOptions)];
+  }
+
+  if (wantsOptions) {
+    let currentRow = 0;
+    for (let currentButton of [["GAMEPLAY", 79/1280, "subMenu(false, false, true)"],
+      ["CONTROLS", 77/1280, "subMenu(false, true)"], ["AUDIO", 27/256, ""]]) {
+      currentRow++;
+      menuButtons.push(new Button(currentButton[0], currentRow,
+        currentButton[1], currentButton[2], "width/3", "width/2"));
+    }
+  }
+
+  if (wantsControls) {
+    let currentColumn = 0;
+    for (let currentButton of [["MOVE LEFT", 57/1280, ""], ["MOVE RIGHT", 51/1280, ""],
+      ["ROTATE CLOCKWISE", 1/40, ""], ["ROTATE COUNTER-CLOCKWISE", 21/1280, ""]]) {
+      menuButtons.push(new Button(currentButton[0], 1, currentButton[1],
+        currentButton[2], `${currentColumn} * width/4`, `width/8 + width/4*${currentColumn}`));
+      
+      currentColumn++;
+    }
+
+    currentColumn = 0;
+
+    for (let currentButton of [["DROP: SOFT", 71/1280, ""], ["DROP: HARD", 17/320, ""],
+      ["HOLD PIECE", 71/1280, ""]]) {
+      menuButtons.push(new Button(currentButton[0], 2, currentButton[1],
+        currentButton[2], `${currentColumn} * width/3`, `width/6 + width/3*${currentColumn}`));
+      
+      currentColumn++;
+    }
+
+    menuButtons.push(new Button("SWAP TO ALTERNATE BINDS", 3, 31/1280, "", width/3, width/2, false));
+  }
 }
 
 function mainMenuButtons() {
-  let currentNumber = 0;
+  let currentRow = 0;
   menuButtons = [];
   for (let currentButton of [["PLAY TETRIS", 7/128, "startTetris()"],
-    ["PLAY TETRIS SWAP!", 23/640, "gamemode = \"PT\""], ["OPTIONS", 51/640, ""],
-    ["HELP", 171/1280, "helpMenu()"]]) {
-    currentNumber++;
-    menuButtons.push(new Button(currentButton[0], currentNumber, currentButton[1], currentButton[2]));
+    ["PLAY TETRIS SWAP!", 23/640, "gamemode = \"PT\""], ["OPTIONS", 51/640, "subMenu(true)"],
+    ["HELP", 171/1280, "subMenu(false)"]]) {
+    currentRow++;
+    menuButtons.push(new Button(currentButton[0], currentRow,
+      currentButton[1], currentButton[2], "width/3", "width/2"));
   }
 }
 
@@ -1493,8 +1548,8 @@ function windowResized() {
   let newButtons = [];
 
   for (let currentButton of menuButtons) {
-    newButtons.push(new Button(currentButton.text, currentButton.buttonNumber, currentButton.textWidthScale,
-      currentButton.onClick, currentButton.displayHelpText));
+    newButtons.push(new Button(currentButton.text, currentButton.rowNumber, currentButton.textWidthScale,
+      currentButton.onClick, currentButton.x1, currentButton.textX, currentButton.displayHelpText));
   }
   menuButtons = newButtons;
 
