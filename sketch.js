@@ -56,6 +56,7 @@ let amountOfMenuButtons = 4;
 let availableChoices = [1, 2, 3, 4, 5, 6, 7, 8];
 let baseTetrisNextPieces = 6;
 let altBinds = false;
+let endTextSize = 1;
 
 // Keybinds.
 let keyLeft = 37;
@@ -1562,6 +1563,11 @@ function moveActiveDownSlowly() {
     for (let minoNumber = 1; minoNumber <= 4; minoNumber++) {
       eval(`tetrisBoards.get("tetrisGame0").minos.push(new Mino(activeTetromino.row${minoNumber},
         activeTetromino.column${minoNumber}, activeTetromino.color))`);
+
+      // However, if the mino locked above the board, end the game.
+      if (eval(`activeTetromino.row${minoNumber}`) < 0) {
+        gamemode = "DT";
+      }
     }
 
     // Disable the active tetromino, stops hard dropping if occuring, and enables holding.
@@ -1711,7 +1717,7 @@ function draw() {
   background("black");
 
   // Draw everything related to gameplay when not on the main menu.
-  if (gamemode !== "MM") {
+  if (gamemode !== "MM" && gamemode !== "DT") {
   // Draws each game.
     for(let gameNumber = 0; gameNumber < games; gameNumber++) {
       tetrisBoards.get(`tetrisGame${gameNumber}`).display({gameNumber: gameNumber});
@@ -1734,10 +1740,29 @@ function draw() {
     tetrisBoards.get("nextPiece").updateMinoUIElements();
   }
 
-  else {
+  else if (gamemode === "MM") {
     for (let currentButton of menuButtons) {
       currentButton.display();
     }
+  }
+
+  else {
+    while ((textAscent() + textDescent())*3 < height &&
+    textWidth(`Score: ${score}\nLevel: ${level}\nLines: ${totalLinesCleared}`) < width) {
+      endTextSize++;
+      textSize(endTextSize);
+    }
+
+    while ((textAscent() + textDescent())*3 > height ||
+    textWidth(`Score: ${score}\nLevel: ${level}\nLines: ${totalLinesCleared}`) > width) {
+      endTextSize--;
+      textSize(endTextSize);
+    }
+
+    textAlign(CENTER, CENTER);
+    fill("white");
+    
+    text(`Score: ${score}\nLevel: ${level}\nLines: ${totalLinesCleared}`, width/2, height/2);
   }
 }
 
