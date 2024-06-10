@@ -55,9 +55,35 @@ let menuButtons = [];
 let amountOfMenuButtons = 4;
 let availableChoices = [1, 2, 3, 4, 5, 6, 7, 8];
 let baseTetrisNextPieces = 6;
+let altBinds = false;
+
+// Keybinds.
+let keyLeft = 37;
+let altKeyLeft = 65;
+
+let keyRight = 39;
+let altKeyRight = 68;
+
+let keySoftDrop = 40;
+let altKeySoftDrop = 83;
+
+let keyHardDrop = 32;
+let altKeyHardDrop = 32;
+
+let keyClockwise = 38;
+let altKeyClockwise = 87;
+
+let keyCounterClockwise = 17;
+let altKeyCounterClockwise = 90;
+
+let keyHold = 16;
+let altKeyHold = 67;
 
 // How many frames it should take for the AS to move the active mino at 60FPS.
 let aSUpdateDelay = 2;
+
+let keyMap = {37: "ArrowLeft", 65: "a", 39: "ArrowRight", 68: "d", 40: "ArrowDown", 83: "s",
+  32: "Space", 38: "ArrowUp", 87: "w", 17: "Control", 90: "z", 16: "Shift", 67: "c"};
 
 const HELP_TEXT = "In Tetris, you control falling tetrominoes, \
 which are pieces made up of four squares (called minos), \
@@ -95,15 +121,6 @@ const O = 5;
 const S = 6;
 const Z = 7;
 const T = 8;
-
-const KEY_D = 68;
-const KEY_A = 65;
-const KEY_S = 83;
-const SPACE = 32;
-const KEY_X = 88;
-const KEY_W = 87;
-const KEY_Z = 90;
-const KEY_C = 67;
 
 const TETROMINO_I = {color: "cyan",
   isActive: true,
@@ -366,7 +383,7 @@ function startTetris() {
 }
 
 class Button {
-  constructor(text, rowNumber, textWidthScale, onClick, rectangleX, textX, displayHelpText) {
+  constructor(text, rowNumber, textWidthScale, onClick, rectangleX, textX, {displayHelpText, bind, altBind} = {}) {
     this.text = text;
     this.rowNumber = rowNumber;
     this.textWidthScale = textWidthScale;
@@ -375,25 +392,12 @@ class Button {
     this.displayHelpText = displayHelpText;
     this.x1 = rectangleX;
     this.textX = textX;
+    this.bind = bind;
+    this.altBind = altBind;
+    this.wantsKey = false;
   }
 
-  display() {
-    fill("white");
-    rect(eval(this.x1), this.y1, width/3, height/amountOfMenuButtons/2);
-
-    fill("black");
-    textAlign(CENTER, CENTER);
-
-    if (74/667 * height < this.textWidthScale * width) {
-      textSize(74/667 * height);
-    }
-  
-    else {
-      textSize(this.textWidthScale * width);
-    }
-
-    text(this.text, eval(this.textX), height*(1 + 2*(this.rowNumber - 1))/2/amountOfMenuButtons);
-
+  drawHelpText() {
     if (this.displayHelpText) {
       fill("white");
       textAlign(LEFT, TOP);
@@ -410,8 +414,56 @@ class Button {
     }
   }
 
+  display() {
+    fill("white");
+    rect(eval(this.x1), this.y1, width/3, height/amountOfMenuButtons/2);
+
+    textAlign(CENTER, CENTER);
+
+    if (this.bind) {
+      if (74/667 * height < 29/1280 * width) {
+        textSize(74/667 * height);
+      }
+    
+      else {
+        textSize(29/1280 * width);
+      }
+
+      if (this.wantsKey) {
+        text("AWAITING KEYPRESS...", eval(this.textX),
+          height*(1 + 2*(this.rowNumber - 0.5))/2/amountOfMenuButtons);
+      }
+
+      else if (altBinds) {
+        text(keyMap[eval(this.altBind)], eval(this.textX),
+          height*(1 + 2*(this.rowNumber - 0.5))/2/amountOfMenuButtons);
+      }
+
+      else {
+        text(keyMap[eval(this.bind)], eval(this.textX),
+          height*(1 + 2*(this.rowNumber - 0.5))/2/amountOfMenuButtons);
+      }
+    }
+
+
+    fill("black");
+
+    if (74/667 * height < this.textWidthScale * width) {
+      textSize(74/667 * height);
+    }
+  
+    else {
+      textSize(this.textWidthScale * width);
+    }
+
+    text(this.text, eval(this.textX), height*(1 + 2*(this.rowNumber - 1))/2/amountOfMenuButtons);
+
+    this.drawHelpText();
+  }
+
   buttonClicked() {
-    if (mouseY > this.y1 && mouseY < this.y1 + height/amountOfMenuButtons/2) {
+    if (mouseY > this.y1 && mouseY < this.y1 + height/amountOfMenuButtons/2 &&
+      mouseX > eval(this.x1) && mouseX < 2*eval(this.textX) - eval(this.x1)) {
       eval(this.onClick);
     }
   }
@@ -779,12 +831,12 @@ function fillBag() {
 function subMenu(wantsOptions, wantsControls, wantsGameplay) {
   if (wantsControls || wantsGameplay) {
     menuButtons = [new Button("RETURN", 4, 27/320, "subMenu(true)",
-      "width/3", "width/2", false)];
+      "width/3", "width/2")];
   }
 
   else {
     menuButtons = [new Button("RETURN", 4, 27/320, "mainMenuButtons()",
-      "width/3", "width/2", !wantsOptions)];
+      "width/3", "width/2", {displayHelpText: !wantsOptions})];
   }
 
   if (wantsOptions) {
@@ -799,25 +851,31 @@ function subMenu(wantsOptions, wantsControls, wantsGameplay) {
 
   if (wantsControls) {
     let currentColumn = 0;
-    for (let currentButton of [["MOVE LEFT", 57/1280, ""], ["MOVE RIGHT", 51/1280, ""],
-      ["ROTATE CLOCKWISE", 1/40, ""], ["ROTATE COUNTER-CLOCKWISE", 21/1280, ""]]) {
-      menuButtons.push(new Button(currentButton[0], 1, currentButton[1],
-        currentButton[2], `${currentColumn} * width/4`, `width/8 + width/4*${currentColumn}`));
+    for (let currentButton of [["MOVE LEFT", 57/1280, "keyLeft", "altKeyLeft"],
+      ["MOVE RIGHT", 51/1280, "keyRight", "altKeyRight"],
+      ["ROTATE CLOCKWISE", 1/40, "keyClockwise", "altKeyClockwise"],
+      ["ROTATE COUNTER-CLOCKWISE", 21/1280, "keyCounterClockwise", "altKeyCounterClockwise"]]) {
+      menuButtons.push(new Button(currentButton[0], 1, currentButton[1], "this.wantsKey = true;",
+        `${currentColumn} * width/4`, `width/8 + width/4*${currentColumn}`,
+        {bind: currentButton[2], altBind: currentButton[3]}));
       
       currentColumn++;
     }
 
     currentColumn = 0;
 
-    for (let currentButton of [["DROP: SOFT", 71/1280, ""], ["DROP: HARD", 17/320, ""],
-      ["HOLD PIECE", 71/1280, ""]]) {
+    for (let currentButton of [["DROP: SOFT", 71/1280, "keySoftDrop", "altKeySoftDrop"],
+      ["DROP: HARD", 17/320, "keyHardDrop", "altKeyHardDrop"],
+      ["HOLD PIECE", 71/1280, "keyHold", "altKeyHold"]]) {
       menuButtons.push(new Button(currentButton[0], 2, currentButton[1],
-        currentButton[2], `${currentColumn} * width/3`, `width/6 + width/3*${currentColumn}`));
+        "this.wantsKey = true", `${currentColumn} * width/3`, `width/6 + width/3*${currentColumn}`,
+        {bind: currentButton[2], altBind: currentButton[3]}));
       
       currentColumn++;
     }
 
-    menuButtons.push(new Button("SWAP TO ALTERNATE BINDS", 3, 31/1280, "", width/3, width/2, false));
+    menuButtons.push(new Button("SWAP TO ALTERNATE BINDS", 3, 31/1280,
+      "altBinds = !altBinds", "width/3", "width/2"));
   }
 }
 
@@ -982,15 +1040,15 @@ function checkIfMoveLeftOrRight(distanceToMove, keyToCheck1, keyToCheck2, leftOr
  */
 function drop() {
   // Checks if the player is trying to soft-drop, speeding up the tetromino's drop speed.
-  if (keyIsDown(DOWN_ARROW) || keyIsDown(KEY_S)) {
+  if (keyIsDown(keySoftDrop) || keyIsDown(altKeySoftDrop)) {
     softDrop = true;
   }
   else {
     softDrop = false;
   }
       
-  // Checks if the player is trying to hard-drop, allowing it if they tapped rather than held the space bar.
-  if (keyIsDown(SPACE)) {
+  // Checks if the player is trying to hard-drop, allowing it if they tapped rather than held.
+  if (keyIsDown(keyHardDrop) || keyIsDown(altKeyHardDrop)) {
     if (!hardDropped) {
       hardDropped = true;
       hardDrop = "movePiece";
@@ -1210,7 +1268,7 @@ function rotateTetromino(clockwise) {
 function rotateIt () {
 
   // For clockwise rotations.
-  if (keyIsDown(UP_ARROW) || keyIsDown(KEY_X) || keyIsDown(KEY_W)){
+  if (keyIsDown(keyClockwise) || keyIsDown(altKeyClockwise)){
     if (!rotatedRight && !rotatedLeft) {
       rotateTetromino(true);
       rotatedRight = true;
@@ -1223,7 +1281,7 @@ function rotateIt () {
   }
   
   // For counter-clockwise rotations.
-  if (keyIsDown(CONTROL) || keyIsDown(KEY_Z)){
+  if (keyIsDown(keyCounterClockwise) || keyIsDown(altKeyCounterClockwise)){
     if (!rotatedLeft && !rotatedRight) {
       rotateTetromino(false);
       rotatedLeft = true;
@@ -1241,7 +1299,7 @@ function rotateIt () {
  */
 function hold() {
   // Checks if the hold keys are pressed, you haven't held already this turn, and the tetromino is active.
-  if ((keyIsDown(SHIFT) || keyIsDown(KEY_C)) && canHold && activeTetromino.isActive) {
+  if ((keyIsDown(keyHold) || keyIsDown(altKeyHold)) && canHold && activeTetromino.isActive) {
     // If there is already a piece held, put it at the start of the bag.
     if (heldPiece) {
       bag.unshift(heldPiece);
@@ -1260,8 +1318,8 @@ function hold() {
  * Calls all the functions responsible for checking if keys are pressed.
  */
 function controlTetris() {
-  checkIfMoveLeftOrRight(-1, LEFT_ARROW, KEY_A, "left", ">= 0");
-  checkIfMoveLeftOrRight(1, RIGHT_ARROW, KEY_D, "right", "< columnLines");
+  checkIfMoveLeftOrRight(-1, keyLeft, altKeyLeft, "left", ">= 0");
+  checkIfMoveLeftOrRight(1, keyRight, altKeyRight, "right", "< columnLines");
   drop();
   rotateIt();
   hold();
@@ -1549,7 +1607,9 @@ function windowResized() {
 
   for (let currentButton of menuButtons) {
     newButtons.push(new Button(currentButton.text, currentButton.rowNumber, currentButton.textWidthScale,
-      currentButton.onClick, currentButton.x1, currentButton.textX, currentButton.displayHelpText));
+      currentButton.onClick, currentButton.x1,
+      currentButton.textX, {displayHelpText: currentButton.displayHelpText,
+        bind: currentButton.bind, altBind: currentButton.altBind}));
   }
   menuButtons = newButtons;
 
@@ -1682,30 +1742,49 @@ function draw() {
 }
 
 function keyPressed() {
-  // Upon pressing p, either pause or unpause the game.
-  if (key === "p" && gamemode !== "MM") {
-    if (gamemode === "PT") {
-      gamemode = "TM";
+  if (gamemode === "MM") {
+    if (!keyMap[keyCode]) {
+      keyMap[keyCode] = key;
     }
 
-    else {
-      gamemode = "PT";
+    for (let currentButton of menuButtons) {
+      if (currentButton.wantsKey) {
+        if (altBinds) {
+          eval(`${currentButton.altBind} = keyCode`);
+        }
+
+        else {
+          eval(`${currentButton.bind} = keyCode`);
+        }
+        
+        currentButton.wantsKey = false;
+      }
+    }
+  }
+
+  else {
+  // Upon pressing p, either pause or unpause the game.
+    if (key === "p") {
+      if (gamemode === "PT") {
+        gamemode = "TM";
+      }
+
+      else {
+        gamemode = "PT";
+      }
     }
   }
 }
 
 function mousePressed() {
-  // Checks if the mouse is in the middle third of the board.
-  if (mouseX > width/3 && mouseX < width*2/3) {
-    // If the game is paused, toggle the cell the mouse is hovering over.
-    if (gamemode === "TM") {
-      tetrisBoards.get("tetrisGame0").toggleCell();
-    }
+  // Checks if the mouse is in the middle third of the board and if the game is paused, before toggling the cell.
+  if (mouseX > width/3 && mouseX < width*2/3 && gamemode === "TM") {
+    tetrisBoards.get("tetrisGame0").toggleCell();
+  }
 
-    else if (gamemode === "MM") {
-      for (let currentButton of menuButtons) {
-        currentButton.buttonClicked();
-      }
+  else if (gamemode === "MM") {
+    for (let currentButton of menuButtons) {
+      currentButton.buttonClicked();
     }
   }
 }
