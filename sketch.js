@@ -57,6 +57,10 @@ let availableChoices = [1, 2, 3, 4, 5, 6, 7, 8];
 let baseTetrisNextPieces = 6;
 let altBinds = false;
 let endTextSize = 1;
+let userWantsTetrisGhostPiece = true;
+let userWantsGhostPiece = true;
+let gridLines = true;
+let tetrisGridLines = true;
 
 // Keybinds.
 let keyLeft = 37;
@@ -374,6 +378,8 @@ function startTetris() {
   uIScale = uIScale * (rowLines/(rowLines - 1))**(nextPieces - baseTetrisNextPieces);
   nextPieces = baseTetrisNextPieces;
   games = 1;
+  userWantsGhostPiece = userWantsTetrisGhostPiece;
+  gridLines = tetrisGridLines;
 
   // Sets up the coordinates for the next piece board.
   tetrisBoards.set("nextPiece", new TetrisBoard(width/3 * 2, height/rowLines,
@@ -384,7 +390,8 @@ function startTetris() {
 }
 
 class Button {
-  constructor(text, rowNumber, textWidthScale, onClick, rectangleX, textX, {displayHelpText, bind, altBind} = {}) {
+  constructor(text, rowNumber, textWidthScale, onClick, rectangleX, textX,
+    {displayHelpText, bind, altBind, toggle, columns} = {}) {
     this.text = text;
     this.rowNumber = rowNumber;
     this.textWidthScale = textWidthScale;
@@ -396,6 +403,8 @@ class Button {
     this.bind = bind;
     this.altBind = altBind;
     this.wantsKey = false;
+    this.toggle = toggle;
+    this.columns = columns;
   }
 
   drawHelpText() {
@@ -415,12 +424,7 @@ class Button {
     }
   }
 
-  display() {
-    fill("white");
-    rect(eval(this.x1), this.y1, width/3, height/amountOfMenuButtons/2);
-
-    textAlign(CENTER, CENTER);
-
+  drawBindings() {
     if (this.bind) {
       if (74/667 * height < 29/1280 * width) {
         textSize(74/667 * height);
@@ -445,7 +449,44 @@ class Button {
           height*(1 + 2*(this.rowNumber - 0.5))/2/amountOfMenuButtons);
       }
     }
+  }
 
+  drawToggle() {
+    if (this.toggle) {
+      console.log(this.toggle);
+      if (eval(`${this.toggle} === true`)) {
+        if (74/667 * height < 2443/12800/this.columns * width) {
+          textSize(74/667 * height);
+        }
+      
+        else {
+          textSize(2443/12800/this.columns * width);
+        }
+
+        text(" ENABLED ", eval(this.textX), height*(1 + 2*(this.rowNumber - 0.5))/2/amountOfMenuButtons);
+      }
+      
+      else {
+        if (74/667 * height < 2323/12800/this.columns * width) {
+          textSize(74/667 * height);
+        }
+      
+        else {
+          textSize(2323/12800/this.columns * width);
+        }
+
+        text(" DISABLED ", eval(this.textX), height*(1 + 2*(this.rowNumber - 0.5))/2/amountOfMenuButtons);
+      }
+    }
+  }
+
+  display() {
+    fill("white");
+    rect(eval(this.x1), this.y1, width/3, height/amountOfMenuButtons/2);
+
+    textAlign(CENTER, CENTER);
+    this.drawBindings();
+    this.drawToggle();
 
     fill("black");
 
@@ -521,31 +562,33 @@ function whatIsInTheBag(currentIndex, wantHeldPiece) {
  * @returns {number} - How many minos the tetromino can drop.
  */
 function drawGhostPiece() {
-  let spacesToDrop = 0;
-  let safeToDrop = true;
+  if (userWantsGhostPiece) {
+    let spacesToDrop = 0;
+    let safeToDrop = true;
 
-  /**
+    /**
      * Makes sure the active tetromino doesn't go under the board.
      * @param {number} minoNumber - The number of the mino to check
      * @returns {boolean} - Whether or not the active tetromino will go under.
      */
-  const doesNotEscape = (minoNumber) => eval(`activeTetromino.row${minoNumber}`) + spacesToDrop < rowLines;
+    const doesNotEscape = (minoNumber) => eval(`activeTetromino.row${minoNumber}`) + spacesToDrop < rowLines;
 
-  // Loops until something is underneath the tetromino.
-  while (doesNotEscape(1) && doesNotEscape(2) && doesNotEscape(3) && doesNotEscape(4) && safeToDrop) {
-    spacesToDrop++;
+    // Loops until something is underneath the tetromino.
+    while (doesNotEscape(1) && doesNotEscape(2) && doesNotEscape(3) && doesNotEscape(4) && safeToDrop) {
+      spacesToDrop++;
 
-    // Loops through every mino.
-    for (let minoToCheck of tetrisBoards.get("tetrisGame0").minos) {
+      // Loops through every mino.
+      for (let minoToCheck of tetrisBoards.get("tetrisGame0").minos) {
       // Checks if the active tetromino would collide with the current mino.
-      if (minoToCheck.collidesWithActive({rowShift: spacesToDrop})) {
-        safeToDrop = false;
-        break;
+        if (minoToCheck.collidesWithActive({rowShift: spacesToDrop})) {
+          safeToDrop = false;
+          break;
+        }
       }
     }
-  }
 
-  return spacesToDrop - 1;
+    return spacesToDrop - 1;
+  }
 }
 
 /**
@@ -829,27 +872,7 @@ function fillBag() {
   }
 }
 
-function subMenu(wantsOptions, wantsControls, wantsGameplay) {
-  if (wantsControls || wantsGameplay) {
-    menuButtons = [new Button("RETURN", 4, 27/320, "subMenu(true)",
-      "width/3", "width/2")];
-  }
-
-  else {
-    menuButtons = [new Button("RETURN", 4, 27/320, "mainMenuButtons()",
-      "width/3", "width/2", {displayHelpText: !wantsOptions})];
-  }
-
-  if (wantsOptions) {
-    let currentRow = 0;
-    for (let currentButton of [["GAMEPLAY", 79/1280, "subMenu(false, false, true)"],
-      ["CONTROLS", 77/1280, "subMenu(false, true)"], ["AUDIO", 27/256, ""]]) {
-      currentRow++;
-      menuButtons.push(new Button(currentButton[0], currentRow,
-        currentButton[1], currentButton[2], "width/3", "width/2"));
-    }
-  }
-
+function drawControls(wantsControls) {
   if (wantsControls) {
     let currentColumn = 0;
     for (let currentButton of [["MOVE LEFT", 57/1280, "keyLeft", "altKeyLeft"],
@@ -880,12 +903,77 @@ function subMenu(wantsOptions, wantsControls, wantsGameplay) {
   }
 }
 
+function subMenu({wantsOptions, wantsControls, wantsGameplay, wantsTetrisSettings} = {}) {
+  if (wantsControls || wantsGameplay) {
+    menuButtons = [new Button("RETURN", 4, 27/320, "subMenu({wantsOptions: true})",
+      "width/3", "width/2")];
+  }
+
+  else if (wantsTetrisSettings) {
+    menuButtons = [new Button("RETURN", 4, 27/320, "subMenu({wantsGameplay: true})",
+      "width/3", "width/2")];
+  }
+
+  else {
+    menuButtons = [new Button("RETURN", 4, 27/320, "mainMenuButtons()",
+      "width/3", "width/2", {displayHelpText: !wantsOptions})];
+  }
+
+  if (wantsOptions) {
+    let currentRow = 0;
+    for (let currentButton of [["GAMEPLAY", 79/1280, "subMenu({wantsGameplay: true})"],
+      ["CONTROLS", 77/1280, "subMenu({wantsControls: true})"], ["AUDIO", 27/256, ""]]) {
+      currentRow++;
+      menuButtons.push(new Button(currentButton[0], currentRow,
+        currentButton[1], currentButton[2], "width/3", "width/2"));
+    }
+  }
+
+  drawControls(wantsControls);
+
+  if (wantsGameplay) {
+    let currentRow = 0;
+    for (let currentButton of [["TETRIS", 1191/12800, "subMenu({wantsTetrisSettings: true})"],
+      ["TETRIS SWAP!", 611/12800, ""], ["BOTH", 3/25, ""]]) {
+      currentRow++;
+      menuButtons.push(new Button(currentButton[0], currentRow,
+        currentButton[1], currentButton[2], "width/3", "width/2"));
+    }
+  }
+
+  if (wantsTetrisSettings) {
+    let currentColumn = 0;
+    for (let currentButton of [["COLUMNS", 17/512, "", {}],
+      ["DELAY BEFORE AUTOMATICALLY SHIFTING", 47/6400, "", {}],
+      ["DELAY BEFORE DROPPING NEXT PIECE", 113/12800, "", {}],
+      ["GHOST PIECE", 313/12800, "userWantsTetrisGhostPiece = !userWantsTetrisGhostPiece",
+        {toggle: "userWantsTetrisGhostPiece", columns: 6}],
+      ["GRID LINES", 47/1600, "tetrisGridLines = !tetrisGridLines", {toggle: "tetrisGridLines", columns: 6}],
+      ["HOLDING", 233/6400, "", {}]]) {
+      menuButtons.push(new Button(currentButton[0], 1, currentButton[1],
+        currentButton[2], `width/6*${currentColumn}`, `width/12 + width/6*${currentColumn}`, currentButton[3]));
+      currentColumn++;
+    }
+
+    currentColumn = 0;
+    for (let currentButton of [["LINES FOR NEXT LEVEL", 181/12800, ""],
+      ["ROWS", 343/6400, ""], ["SHIFTING DELAY", 13/640, ""],
+      ["SIZE OF PIECE PREVIEW", 11/800, ""], ["SPEED MULTIPLIER", 7/400, ""], ["STARTING LEVEL", 1/50, ""]]) {
+      menuButtons.push(new Button(currentButton[0], 2, currentButton[1],
+        currentButton[2], `width/6*${currentColumn}`, `width/12 + width/6*${currentColumn}`));
+      currentColumn++;
+    }
+
+    menuButtons.push(new Button("SCORE SETTINGS", 3, 483/12800, "", "width/3", "width/2"));
+  }
+}
+
 function mainMenuButtons() {
   let currentRow = 0;
   menuButtons = [];
   for (let currentButton of [["PLAY TETRIS", 7/128, "startTetris()"],
-    ["PLAY TETRIS SWAP!", 23/640, "gamemode = \"PT\""], ["OPTIONS", 51/640, "subMenu(true)"],
-    ["HELP", 171/1280, "subMenu(false)"]]) {
+    ["PLAY TETRIS SWAP!", 23/640, "gamemode = \"PT\""], ["OPTIONS", 51/640, "subMenu({wantsOptions: true})"],
+    ["HELP", 171/1280, "subMenu()"]]) {
     currentRow++;
     menuButtons.push(new Button(currentButton[0], currentRow,
       currentButton[1], currentButton[2], "width/3", "width/2"));
@@ -1615,7 +1703,8 @@ function windowResized() {
     newButtons.push(new Button(currentButton.text, currentButton.rowNumber, currentButton.textWidthScale,
       currentButton.onClick, currentButton.x1,
       currentButton.textX, {displayHelpText: currentButton.displayHelpText,
-        bind: currentButton.bind, altBind: currentButton.altBind}));
+        bind: currentButton.bind, altBind: currentButton.altBind, toggle: currentButton.toggle,
+        columns: currentButton.columns}));
   }
   menuButtons = newButtons;
 
@@ -1720,7 +1809,7 @@ function draw() {
   if (gamemode !== "MM" && gamemode !== "DT") {
   // Draws each game.
     for(let gameNumber = 0; gameNumber < games; gameNumber++) {
-      tetrisBoards.get(`tetrisGame${gameNumber}`).display({gameNumber: gameNumber});
+      tetrisBoards.get(`tetrisGame${gameNumber}`).display({gameNumber: gameNumber, drawGrid: gridLines});
     }
 
     tetrisBoards.get("nextPiece").display({drawGrid: false});
