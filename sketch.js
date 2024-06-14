@@ -1,4 +1,5 @@
 let columnLines = 10;
+let tetrisColumnLines = 10;
 let rowLines = 20;
 let tetrisBoards = new Map();
 let games = 3;
@@ -380,6 +381,7 @@ function startTetris() {
   games = 1;
   userWantsGhostPiece = userWantsTetrisGhostPiece;
   gridLines = tetrisGridLines;
+  columnLines = tetrisColumnLines;
 
   // Sets up the coordinates for the next piece board.
   tetrisBoards.set("nextPiece", new TetrisBoard(width/3 * 2, height/rowLines,
@@ -391,7 +393,7 @@ function startTetris() {
 
 class Button {
   constructor(text, rowNumber, textWidthScale, onClick, rectangleX, textX,
-    {displayHelpText, bind, altBind, toggle, columns} = {}) {
+    {displayHelpText, bind, altBind, toggle, columns, number} = {}) {
     this.text = text;
     this.rowNumber = rowNumber;
     this.textWidthScale = textWidthScale;
@@ -405,6 +407,7 @@ class Button {
     this.wantsKey = false;
     this.toggle = toggle;
     this.columns = columns;
+    this.number = number;
   }
 
   drawHelpText() {
@@ -453,7 +456,6 @@ class Button {
 
   drawToggle() {
     if (this.toggle) {
-      console.log(this.toggle);
       if (eval(`${this.toggle} === true`)) {
         if (74/667 * height < 2443/12800/this.columns * width) {
           textSize(74/667 * height);
@@ -480,6 +482,20 @@ class Button {
     }
   }
 
+  drawNumber() {
+    if (this.number) {
+      let newTextSize = 74/667 * height;
+      textSize(newTextSize);
+      
+      while (textWidth(eval(this.number)) > width/this.columns) {
+        newTextSize -= 0.1;
+        textSize(newTextSize);
+      }
+
+      text(eval(this.number), eval(this.textX), height*(1 + 2*(this.rowNumber - 0.5))/2/amountOfMenuButtons);
+    }
+  }
+
   display() {
     fill("white");
     rect(eval(this.x1), this.y1, width/3, height/amountOfMenuButtons/2);
@@ -487,6 +503,7 @@ class Button {
     textAlign(CENTER, CENTER);
     this.drawBindings();
     this.drawToggle();
+    this.drawNumber();
 
     fill("black");
 
@@ -501,6 +518,24 @@ class Button {
     text(this.text, eval(this.textX), height*(1 + 2*(this.rowNumber - 1))/2/amountOfMenuButtons);
 
     this.drawHelpText();
+  }
+
+  requestNumber() {
+    let isNumber = false;
+    let userInput;
+
+    while (!isNumber) {
+      userInput = prompt("Enter a new value.", eval(this.number));
+      if (userInput === null || !isNaN(userInput) && userInput.trim() !== "") {
+        isNumber = true;
+      }
+
+      else {
+        alert("Please enter a number.");
+      }
+    }
+
+    eval(`${this.number} === ${userInput}`);
   }
 
   buttonClicked() {
@@ -943,7 +978,7 @@ function subMenu({wantsOptions, wantsControls, wantsGameplay, wantsTetrisSetting
 
   if (wantsTetrisSettings) {
     let currentColumn = 0;
-    for (let currentButton of [["COLUMNS", 17/512, "", {}],
+    for (let currentButton of [["COLUMNS", 17/512, "this.requestNumb;", {columns: 6, number: "tetrisColumnLines"}],
       ["DELAY BEFORE AUTOMATICALLY SHIFTING", 47/6400, "", {}],
       ["DELAY BEFORE DROPPING NEXT PIECE", 113/12800, "", {}],
       ["GHOST PIECE", 313/12800, "userWantsTetrisGhostPiece = !userWantsTetrisGhostPiece",
@@ -1704,7 +1739,7 @@ function windowResized() {
       currentButton.onClick, currentButton.x1,
       currentButton.textX, {displayHelpText: currentButton.displayHelpText,
         bind: currentButton.bind, altBind: currentButton.altBind, toggle: currentButton.toggle,
-        columns: currentButton.columns}));
+        columns: currentButton.columns, number: currentButton.number}));
   }
   menuButtons = newButtons;
 
