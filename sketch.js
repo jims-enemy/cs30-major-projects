@@ -978,7 +978,7 @@ function subMenu({wantsOptions, wantsControls, wantsGameplay, wantsTetrisSetting
 
   if (wantsTetrisSettings) {
     let currentColumn = 0;
-    for (let currentButton of [["COLUMNS", 17/512, "this.requestNumb;", {columns: 6, number: "tetrisColumnLines"}],
+    for (let currentButton of [["COLUMNS", 17/512, "this.requestNumber;", {columns: 6, number: "tetrisColumnLines"}],
       ["DELAY BEFORE AUTOMATICALLY SHIFTING", 47/6400, "", {}],
       ["DELAY BEFORE DROPPING NEXT PIECE", 113/12800, "", {}],
       ["GHOST PIECE", 313/12800, "userWantsTetrisGhostPiece = !userWantsTetrisGhostPiece",
