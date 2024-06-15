@@ -1,17 +1,20 @@
 let columnLines = 10;
 let tetrisColumnLines = 10;
 let rowLines = 20;
+let tetrisRowLines = 20;
 let tetrisBoards = new Map();
 let games = 3;
 let bag = [];
 let level = 1;
+let tetrisLevel = 1;
 let timer;
 let lastUpdate = 0;
 let activeTetromino = {isActive: false};
 let blockUnder = false;
 let obstructionOnLeftSide = false;
 let obstructionOnRightSide = false;
-let holdDelay = 500/3;
+let holdDelay = 10;
+let tetrisHoldDelay = 10;
 let leftTimeHeld = 0;
 let rightTimeHeld = 0;
 let softDrop = false;
@@ -31,7 +34,8 @@ let difficultClear = false;
 let gamemode = "MM";
 let timePaused = 0;
 let justTetrised = false;
-let entryDelay = 100;
+let entryDelay = 6;
+let tetrisEntryDelay = 6;
 let entryDelayStart = 0;
 let totalLinesCleared = 0;
 let leftTimeStartedHeld = 0;
@@ -62,6 +66,11 @@ let userWantsTetrisGhostPiece = true;
 let userWantsGhostPiece = true;
 let gridLines = true;
 let tetrisGridLines = true;
+let nextLevelLines = 10;
+let tetrisNextLevelLines = 10;
+let speedMultiplier = 1;
+let tetrisSpeedMultiplier = 1;
+let canDie = true;
 
 // Keybinds.
 let keyLeft = 37;
@@ -87,6 +96,7 @@ let altKeyHold = 67;
 
 // How many frames it should take for the AS to move the active mino at 60FPS.
 let aSUpdateDelay = 2;
+let tetrisASUpdateDelay = 2;
 
 let keyMap = {37: "ArrowLeft", 65: "a", 39: "ArrowRight", 68: "d", 40: "ArrowDown", 83: "s",
   32: "Space", 38: "ArrowUp", 87: "w", 17: "Control", 90: "z", 16: "Shift", 67: "c"};
@@ -376,12 +386,19 @@ class Mino {
 function startTetris() {
   availableChoices.shift();
   bag = [];
-  uIScale = uIScale * (rowLines/(rowLines - 1))**(nextPieces - baseTetrisNextPieces);
+  uIScale = uIScale * (rowLines/(rowLines - 1))**(-1.5 * baseTetrisNextPieces + 10.5);
   nextPieces = baseTetrisNextPieces;
   games = 1;
   userWantsGhostPiece = userWantsTetrisGhostPiece;
   gridLines = tetrisGridLines;
   columnLines = tetrisColumnLines;
+  holdDelay = tetrisHoldDelay;
+  entryDelay = tetrisEntryDelay;
+  nextLevelLines = tetrisNextLevelLines;
+  rowLines = tetrisRowLines;
+  aSUpdateDelay = tetrisASUpdateDelay;
+  speedMultiplier = tetrisSpeedMultiplier;
+  level = tetrisLevel;
 
   // Sets up the coordinates for the next piece board.
   tetrisBoards.set("nextPiece", new TetrisBoard(width/3 * 2, height/rowLines,
@@ -528,14 +545,15 @@ class Button {
       userInput = prompt("Enter a new value.", eval(this.number));
       if (userInput === null || !isNaN(userInput) && userInput.trim() !== "") {
         isNumber = true;
+        if (userInput !== null) {
+          eval(`${this.number} = ${userInput}`);
+        }
       }
 
       else {
         alert("Please enter a number.");
       }
     }
-
-    eval(`${this.number} === ${userInput}`);
   }
 
   buttonClicked() {
@@ -730,31 +748,31 @@ class TetrisBoard {
     this.resizeText(width/80 * 3 * uIScale);
     text("NEXT", this.x2 + width/(3*rowLines) * 4 * uIScale, this.y1 * uIScale);
     text("HOLD", this.x2 + width/(3*rowLines) * 4 * uIScale,
-      (this.y2 - height/rowLines*2*(8 - nextPieces)) * uIScale);
+      (this.y2 - height/rowLines*2*(-7 / 6 * nextPieces + 55 / 6)) * uIScale);
     
     // Draws SCORE, LEVEL, and LINES at the same size.
     this.resizeText(width/1280 * 27 * (uIScale + 3/20));
     text("SCORE", this.x2 + width/(3*rowLines) * 4 * uIScale,
-      (this.y2 + height/rowLines * (nextPieces - 6)) * uIScale);
+      (this.y2 + height/rowLines * (2 * nextPieces - 13)) * uIScale);
     text("LEVEL", this.x2 + width/(3*rowLines) * 4 * uIScale,
-      (this.y2 + height/rowLines * (nextPieces - 4)) * uIScale);
+      (this.y2 + height/rowLines * (2 * nextPieces - 11)) * uIScale);
     text("LINES", this.x2 + width/(3*rowLines) * 4 * uIScale,
-      (this.y2 + height/rowLines * (nextPieces - 2)) * uIScale);
+      (this.y2 + height/rowLines * (2 * nextPieces - 9)) * uIScale);
 
     // Draws the score number, automatically resizing based on it's length.
     this.resizeText(width/80 * 3/(4 - score.length + 1));
     text(score, this.x2 + width/(3*rowLines) * 4 * uIScale,
-      (this.y2 + height/rowLines * (nextPieces - 5)) * uIScale);
+      (this.y2 + height/rowLines * (2 * nextPieces - 12)) * uIScale);
 
     // Draws the level number, automatically resizing based on it's length.
     this.resizeText(width/80 * 3/(4 - level.length + 1));
     text(level, this.x2 + width/(3*rowLines) * 4 * uIScale,
-      (this.y2 + height/rowLines * (nextPieces - 3)) * uIScale);
+      (this.y2 + height/rowLines * (2 * nextPieces - 10)) * uIScale);
 
     // Draws the amount of lines cleared, automatically resizing based on it's length.
     this.resizeText(width/80 * 3/(4 - totalLinesCleared.length + 1));
     text(totalLinesCleared, this.x2 + width/(3*rowLines) * 4 * uIScale,
-      (this.y2 + height/rowLines * (nextPieces - 1)) * uIScale);
+      (this.y2 + height/rowLines * (2 * nextPieces - 8)) * uIScale);
   }
 
   /**
@@ -820,14 +838,14 @@ class TetrisBoard {
 
     this.drawNextPieces();
      
-    // If an I is being held, moves it down 12.5 rows added to the amount of next pieces.
+    // If an I is being held, moves it down .5 extra rows.
     if (heldPiece === I) {
-      rowOffset = 12.5 + nextPieces;
+      rowOffset = 2.5 * nextPieces + 2;
     }
     
-    // Otherwise, if any piece is being held, moves it down 12 rows added to the amount of next pieces.
+    // Otherwise, if any piece is being held, move it down the regular amount.
     else if (heldPiece) {
-      rowOffset = 12 + nextPieces;
+      rowOffset = 2.5 * nextPieces + 1.5;
     }
 
     // If an I or O is being held, move it 3 columns to the left.
@@ -842,7 +860,8 @@ class TetrisBoard {
 
     // Loops through every mino of the held tetromino, adding it to the UI.
     for (let minoNumber = 1; minoNumber <= 4; minoNumber++) {
-      eval(`this.minos.push(new Mino(whatIsInTheBag(0, true).row${minoNumber} + rowOffset, whatIsInTheBag(0, true).column${minoNumber} + columnOffset, whatIsInTheBag(0, true).color))`);
+      eval(`this.minos.push(new Mino(whatIsInTheBag(0, true).row${minoNumber} + rowOffset,
+        whatIsInTheBag(0, true).column${minoNumber} + columnOffset, whatIsInTheBag(0, true).color))`);
     }
   }
 
@@ -978,24 +997,31 @@ function subMenu({wantsOptions, wantsControls, wantsGameplay, wantsTetrisSetting
 
   if (wantsTetrisSettings) {
     let currentColumn = 0;
-    for (let currentButton of [["COLUMNS", 17/512, "this.requestNumber;", {columns: 6, number: "tetrisColumnLines"}],
-      ["DELAY BEFORE AUTOMATICALLY SHIFTING", 47/6400, "", {}],
-      ["DELAY BEFORE DROPPING NEXT PIECE", 113/12800, "", {}],
-      ["GHOST PIECE", 313/12800, "userWantsTetrisGhostPiece = !userWantsTetrisGhostPiece",
-        {toggle: "userWantsTetrisGhostPiece", columns: 6}],
-      ["GRID LINES", 47/1600, "tetrisGridLines = !tetrisGridLines", {toggle: "tetrisGridLines", columns: 6}],
-      ["HOLDING", 233/6400, "", {}]]) {
+    for (let currentButton of [["COLUMNS", 17/512, "this.requestNumber();",
+      {columns: 6, number: "tetrisColumnLines"}],
+    ["DELAY BEFORE AUTOMATICALLY SHIFTING", 47/6400, "this.requestNumber()",
+      {columns: 6, number: "tetrisHoldDelay"}],
+    ["DELAY BEFORE DROPPING NEXT PIECE", 113/12800, "this.requestNumber()",
+      {columns: 6, number: "tetrisEntryDelay"}],
+    ["GHOST PIECE", 313/12800, "userWantsTetrisGhostPiece = !userWantsTetrisGhostPiece",
+      {toggle: "userWantsTetrisGhostPiece", columns: 6}],
+    ["GRID LINES", 47/1600, "tetrisGridLines = !tetrisGridLines", {toggle: "tetrisGridLines", columns: 6}],
+    ["HOLDING", 233/6400, "", {}]]) {
       menuButtons.push(new Button(currentButton[0], 1, currentButton[1],
         currentButton[2], `width/6*${currentColumn}`, `width/12 + width/6*${currentColumn}`, currentButton[3]));
       currentColumn++;
     }
 
     currentColumn = 0;
-    for (let currentButton of [["LINES FOR NEXT LEVEL", 181/12800, ""],
-      ["ROWS", 343/6400, ""], ["SHIFTING DELAY", 13/640, ""],
-      ["SIZE OF PIECE PREVIEW", 11/800, ""], ["SPEED MULTIPLIER", 7/400, ""], ["STARTING LEVEL", 1/50, ""]]) {
+    for (let currentButton of [["LINES FOR NEXT LEVEL", 181/12800, "this.requestNumber()",
+      {columns: 6, number: "tetrisNextLevelLines"}],
+    ["ROWS", 343/6400, "this.requestNumber()", {columns: 6, number: "tetrisRowLines"}],
+    ["SHIFTING DELAY", 13/640, "this.requestNumber()", {columns: 6, number: "tetrisASUpdateDelay"}],
+    ["SIZE OF PIECE PREVIEW", 11/800, "this.requestNumber()", {columns: 6, number: "baseTetrisNextPieces"}],
+    ["SPEED MULTIPLIER", 7/400, "this.requestNumber()", {columns: 6, number: "tetrisSpeedMultiplier"}],
+    ["STARTING LEVEL", 1/50, "this.requestNumber()", {columns: 6, number: "tetrisLevel"}]]) {
       menuButtons.push(new Button(currentButton[0], 2, currentButton[1],
-        currentButton[2], `width/6*${currentColumn}`, `width/12 + width/6*${currentColumn}`));
+        currentButton[2], `width/6*${currentColumn}`, `width/12 + width/6*${currentColumn}`, currentButton[3]));
       currentColumn++;
     }
 
@@ -1104,8 +1130,8 @@ function moveLeftOrRight(distanceToMove, keyToCheck1, keyToCheck2, leftOrRight, 
 
   // Is there not something to the left/right, has delay been finished or just started, and is the correct frame.
   if (!obstructionOnSide && ((eval(`${leftOrRight}TimeHeld`) === 0 ||
-    eval(`${leftOrRight}TimeHeld`) >= holdDelay) && !eval(`${leftOrRight}didDAS`) ||
-    eval(`${leftOrRight}TimeHeld`) >= aSUpdateDelay * 50/3 + holdDelay && eval(`${leftOrRight}didDAS`))) {
+    eval(`${leftOrRight}TimeHeld`) >= holdDelay*50/3) && !eval(`${leftOrRight}didDAS`) ||
+    eval(`${leftOrRight}TimeHeld`) >= aSUpdateDelay*50/3 + holdDelay*50/3 && eval(`${leftOrRight}didDAS`))) {
 
     shiftActiveTetromino({columnChange1: distanceToMove});
 
@@ -1115,7 +1141,7 @@ function moveLeftOrRight(distanceToMove, keyToCheck1, keyToCheck2, leftOrRight, 
         eval(`${leftOrRight}TimeStartedHeld += aSUpdateDelay * 50/3;`);
 
         // If the conditions to move left haven't been satisfied, then try moving left again.
-        if (timer - eval(`${leftOrRight}TimeStartedHeld`) >= aSUpdateDelay * 50/3 + holdDelay) {
+        if (timer - eval(`${leftOrRight}TimeStartedHeld`) >= aSUpdateDelay * 50/3 + holdDelay*50/3) {
           checkIfMoveLeftOrRight(distanceToMove, keyToCheck1, keyToCheck2, leftOrRight, maxDistance);
         }
       }
@@ -1641,8 +1667,8 @@ function clearLines() {
   addTurnEndScore(linesCleared);
   totalLinesCleared += linesCleared;
 
-  // Goes to the next level if the amount of lines cleared is bigger than 10 of the current level.
-  if (totalLinesCleared >= 10 * level) {
+  // Goes to the next level if the amount of lines cleared is bigger than the amount of the current level.
+  if (totalLinesCleared >= nextLevelLines*level) {
     level++;
   }
 }
@@ -1687,8 +1713,8 @@ function moveActiveDownSlowly() {
       eval(`tetrisBoards.get("tetrisGame0").minos.push(new Mino(activeTetromino.row${minoNumber},
         activeTetromino.column${minoNumber}, activeTetromino.color))`);
 
-      // However, if the mino locked above the board, end the game.
-      if (eval(`activeTetromino.row${minoNumber}`) < 0) {
+      // However, if the mino locked above the board, end the game if deaths are enabled.
+      if (eval(`activeTetromino.row${minoNumber}`) < 0 && canDie) {
         gamemode = "DT";
       }
     }
@@ -1711,8 +1737,8 @@ function updatePosition() {
   tetrisBoards.get("tetrisGame0").drawActivePiece();
   
   // Checks if enough time has passed, calculating using either the official formula or softDropSpeed.
-  if ((timer - lastUpdate >= (0.8 - (level - 1) * 0.007)**(level - 1) * 1000 ||
-  softDrop && timer - lastUpdate >= softDropSpeed) && hardDrop !== "movePiece") {
+  if (((timer - lastUpdate)*speedMultiplier >= (0.8 - (level - 1) * 0.007)**(level - 1)*1000 ||
+  softDrop && (timer - lastUpdate)*speedMultiplier >= softDropSpeed) && hardDrop !== "movePiece") {
     moveActiveDownSlowly();
   }
 
@@ -1723,7 +1749,7 @@ function updatePosition() {
     shiftActiveTetromino({fullShift: true, rowChange1: spacesToDrop});
 
     // Updates the score and resets values.
-    score += (spacesToDrop - 1) * 2;
+    score += spacesToDrop * 2;
     hardDrop = true;
     lastUpdate = 0;
   }
@@ -1825,7 +1851,7 @@ function moveActiveTetromino() {
 
   // Otherwise, after a delay, grab the next tetromino from the bag.
   else {
-    if (timer - entryDelayStart >= entryDelay) {
+    if (timer - entryDelayStart >= entryDelay*50/3) {
       grabNextFromBag();
       entryDelayStart = timer;
     }
